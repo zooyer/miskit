@@ -45,6 +45,7 @@ func NewBits(rand, time, node, step int64) Bits {
 	}
 }
 
+// TODO 支持不同位排序
 func NewNode(epoch, ms, node int64, bits Bits) *Node {
 	var n Node
 	var now = time.Now()
@@ -77,7 +78,7 @@ func Shotflake(epoch, node int64) *Node {
 		Node: 2,
 		Step: 2,
 	}
-	return NewNode(epoch, 1000000000, node, bits)
+	return NewNode(epoch, 1000, node, bits)
 }
 
 // 标准雪花算法 - Twitter
@@ -88,7 +89,7 @@ func Snowflake(epoch, node int64) *Node {
 		Node: 10,
 		Step: 12,
 	}
-	return NewNode(epoch, 1000000, node, bits)
+	return NewNode(epoch, 1, node, bits)
 }
 
 // 索尼雪花算法
@@ -99,7 +100,7 @@ func Sonyflake(epoch, node int64) *Node {
 		Node: 8,
 		Step: 16,
 	}
-	return NewNode(epoch, 100000, node, bits)
+	return NewNode(epoch, 10, node, bits)
 }
 
 func (n *Node) now() int64 {
