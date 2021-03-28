@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "created_at": "2021-01-03T22:23:08+08:00",
+    "updated_at": "2021-01-03T22:31:23+08:00",
+    "created_id": 1,
+    "updated_id": 0,
+    "created_by": "",
+    "updated_by": "",
+    "uid": 1000,
+    "version": 1,
+    "status": 4,
+    "config": {
+      "domain": "zhangzhongyuan.online",
+      "enable": true,
+      "interval": "60s",
+      "provider": "aliyun",
+      "record": [
+        {
+          "line": "默认",
+          "rr": "gcas",
+          "ttl": "600",
+          "type": "A"
+        },
+        {
+          "line": "默认",
+          "rr": "config",
+          "ttl": "600",
+          "type": "A"
+        },
+        {
+          "line": "默认",
+          "rr": "vpn-bj",
+          "ttl": "600",
+          "type": "A"
+        }
+      ],
+      "valuer": []
+    },
+    "concurrent": 1000
+  }
+]
