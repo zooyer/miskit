@@ -218,7 +218,7 @@ func (n *Node) GenID() ID {
 	var now = n.now()
 
 	if now == n.time {
-		if n.step = (n.step + 1) & n.stepMask; n.step == 0 {
+		if n.step = (n.step + 1) & n.stepMax; n.step == 0 {
 			for now <= n.time {
 				now = n.now()
 			}
@@ -234,7 +234,7 @@ func (n *Node) GenID() ID {
 		random = n.rand.Int63() % (-1 ^ (-1 << n.bits.Rand) + 1)
 	}
 
-	var id = random<<n.randShift | now<<n.timeShift | n.node<<n.nodeShift | n.step
+	var id = random<<n.randShift | now<<n.timeShift | n.node<<n.nodeShift | n.step<<n.stepShift
 
 	return ID(id)
 }
