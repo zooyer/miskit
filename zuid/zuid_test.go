@@ -2,7 +2,12 @@ package zuid
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/zooyer/jsons"
+	"io"
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -53,4 +58,56 @@ func TestNewNode(t *testing.T) {
 	if id != id2 {
 		t.Fatal("json marshal error:", id, id2)
 	}
+}
+
+func TestTTT(t *testing.T) {
+	var params = url.Values{
+		"app_id":     {"622660"},
+		"app_secret": {"d566d332f9c78479baba83a6af7f6c45"},
+	}
+	url, err := url.Parse("http://ice.zhangzhongyuan.online:8004/ice/v1/idgen")
+	if err != nil {
+		t.Fatal(err)
+	}
+	url.RawQuery = params.Encode()
+	const ur = "http://ice.zhangzhongyuan.online:8004/ice/v1/idgen?app_id=622660&app_secret=d566d332f9c78479baba83a6af7f6c45"
+	GenID := func() (id int64, err error) {
+		resp, err := http.Get(url.String())
+		if err != nil {
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return 0, errors.New(resp.Status)
+		}
+
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return
+		}
+
+		val, err := jsons.Unmarshal(data)
+		if err != nil {
+			return
+		}
+
+		if val.Int("errno") != 0 {
+			return 0, errors.New(val.String("errmsg"))
+		}
+
+		return val.Int("data", "id"), nil
+	}
+
+	var now = time.Now()
+
+	for i := 0; i < 16; i++ {
+		id, err := GenID()
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Println(id)
+	}
+
+	t.Log(time.Since(now))
 }
