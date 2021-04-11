@@ -1,11 +1,13 @@
 package micro
 
 import (
+	"fmt"
 	"net/http"
 	"runtime/debug"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/zooyer/miskit/errors"
 	"github.com/zooyer/miskit/log"
 	"github.com/zooyer/miskit/trace"
 )
@@ -72,15 +74,15 @@ func Recovery(logger *log.Logger) gin.HandlerFunc {
 		defer func() {
 			if e := recover(); e != nil {
 				logger.Tag(false, "panic", e).Error(ctx, string(debug.Stack()))
-				// TODO metric
+				errors.New(errors.ServicePanic, fmt.Errorf("%v", e)).Metric()
 			}
 		}()
 		ctx.Next()
 	}
 }
 
-func Trace() gin.HandlerFunc {
+func Trace(caller string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		trace.Set(ctx, trace.New(ctx.Request))
+		trace.Set(ctx, trace.New(ctx.Request, caller))
 	}
 }

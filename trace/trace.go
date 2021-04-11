@@ -17,11 +17,13 @@ import (
 )
 
 type Trace struct {
+	Caller  string          `json:"caller,omitempty"`
 	TraceID string          `json:"trace_id,omitempty"`
 	SpanID  string          `json:"span_id,omitempty"`
 	Lang    string          `json:"lang,omitempty"`
 	Tag     string          `json:"tag,omitempty"`
 	Content json.RawMessage `json:"content,omitempty"`
+	Request *http.Request   `json:"-"`
 }
 
 const (
@@ -45,18 +47,22 @@ var (
 	}
 )
 
-func New(req *http.Request) *Trace {
+func New(req *http.Request, caller string) *Trace {
 	var trace = new(Trace)
+
+	trace.Caller = caller
+
 	if req != nil {
 		trace.TraceID = req.Header.Get(httpHeaderKeyTraceID)
 		trace.SpanID = req.Header.Get(httpHeaderKeySpanID)
 		trace.Lang = req.Header.Get(httpHeaderKeyLang)
 		trace.Tag = req.Header.Get(httpHeaderKeyTag)
 		trace.Content = []byte(req.Header.Get(httpHeaderKeyContent))
+		trace.Request = req
 	}
 
 	if trace.TraceID == "" {
-		trace.TraceID = genTraceID()
+		trace.TraceID = GenTraceID()
 	}
 
 	return trace
@@ -78,7 +84,7 @@ func Set(ctx context.Context, trace *Trace) context.Context {
 }
 
 func Get(ctx context.Context) *Trace {
-	var trace = New(nil)
+	var trace = New(nil, "")
 	switch ctx := ctx.(type) {
 	case *gin.Context:
 		trace, _ = ctx.MustGet(contextKey).(*Trace)
@@ -96,9 +102,9 @@ func (t *Trace) Set(header http.Header, caller string) {
 	if t.TraceID != "" {
 		header.Set(httpHeaderKeyTraceID, t.TraceID)
 	} else {
-		header.Set(httpHeaderKeyTraceID, genTraceID())
+		header.Set(httpHeaderKeyTraceID, GenTraceID())
 	}
-	header.Set(httpHeaderKeySpanID, genSpanID())
+	header.Set(httpHeaderKeySpanID, GenSpanID())
 	if t.Lang != "" {
 		header.Set(httpHeaderKeyLang, t.Lang)
 	}
@@ -113,12 +119,41 @@ func (t *Trace) Set(header http.Header, caller string) {
 	}
 }
 
+func (t *Trace) Child() *Trace {
+	if t == nil {
+		return nil
+	}
+
+	var trace Trace
+
+	trace = *t
+	trace.Content = make(json.RawMessage, len(t.Content))
+	copy(trace.Content, t.Content)
+	trace.SpanID = GenSpanID()
+
+	return &trace
+}
+
+func (t *Trace) Clone() *Trace {
+	if t == nil {
+		return nil
+	}
+
+	var trace Trace
+
+	trace = *t
+	trace.Content = make(json.RawMessage, len(t.Content))
+	copy(trace.Content, t.Content)
+
+	return &trace
+}
+
 func (t *Trace) String() string {
 	data, _ := json.Marshal(t)
 	return string(data)
 }
 
-func genTraceID() string {
+func GenTraceID() string {
 	pid := os.Getegid()
 	now := time.Now()
 	unix := now.Unix()
@@ -138,7 +173,7 @@ func genTraceID() string {
 	return buf.String()
 }
 
-func genSpanID() string {
+func GenSpanID() string {
 	return fmt.Sprintf("%x", rand.Int63())
 }
 

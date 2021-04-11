@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/zooyer/miskit/metric"
 	"io"
 	"io/ioutil"
 	"net"
@@ -18,31 +19,27 @@ import (
 	"github.com/zooyer/miskit/trace"
 )
 
-// 业务层响应解析
-type Responder interface {
-	New() Responder // 创建新解析器
-	Code() int      // 业务层状态码
-	Body() []byte   // 业务层数据
-	Error() error   // 业务层错误
-	Retry() bool    // 业务层重试
-}
-
 // HTTP客户端
 type Client struct {
-	name      string
-	retry     int
-	timeout   time.Duration
-	logger    *log.Logger
-	responder Responder
-	client    http.Client
-	option    []Option
+	name    string
+	retry   int
+	timeout time.Duration
+	logger  *log.Logger
+	client  http.Client
+	option  []Option
 }
 
 // HTTP请求
 type Request http.Request
 
+type Response struct {
+	Code    int             `json:"code"`
+	Message string          `json:"message"`
+	Data    json.RawMessage `json:"data"`
+}
+
 // HTTP请求选项
-type Option func(req *Request)
+type Option func(ctx context.Context, req *Request)
 
 // 请求表单(适用于GET参数、POST表单等)
 func NewForm(v interface{}) map[string]interface{} {
@@ -84,18 +81,23 @@ func NewForm(v interface{}) map[string]interface{} {
 }
 
 // 创建HTTP客户端
-func New(name string, retry int, timeout time.Duration, logger *log.Logger, responder Responder, opts ...Option) *Client {
+func New(name string, retry int, timeout time.Duration, logger *log.Logger, opts ...Option) *Client {
+	var connTimeout = timeout / 5
+	if connTimeout.Milliseconds() < 5 {
+		connTimeout = 5 * time.Millisecond
+	}
+	timeout -= connTimeout
+
 	return &Client{
-		name:      name,
-		retry:     retry,
-		timeout:   timeout,
-		logger:    logger,
-		responder: responder,
-		option:    opts,
+		name:    name,
+		retry:   retry,
+		timeout: timeout,
+		logger:  logger,
+		option:  opts,
 		client: http.Client{
 			Transport: &http.Transport{
 				DialContext: (&net.Dialer{
-					Timeout:       timeout,
+					Timeout:       connTimeout,
 					KeepAlive:     5 * time.Second,
 					FallbackDelay: 0,
 				}).DialContext,
@@ -113,18 +115,18 @@ func (c *Client) Get(ctx context.Context, url string, params map[string]interfac
 }
 
 // POST请求
-func (c *Client) Post(ctx context.Context, url, contentType string, request, response interface{}, opts ...Option) (data []byte, code int, err error) {
+func (c *Client) post(ctx context.Context, url, contentType string, request, response interface{}, opts ...Option) (data []byte, code int, err error) {
 	return c.do(ctx, "POST", contentType, url, request, response, opts...)
 }
 
 // POST表单请求
 func (c *Client) PostForm(ctx context.Context, url string, params map[string]interface{}, response interface{}, opts ...Option) (data []byte, code int, err error) {
-	return c.Post(ctx, url, "application/x-www-form-urlencoded", params, response, opts...)
+	return c.post(ctx, url, "application/x-www-form-urlencoded", params, response, opts...)
 }
 
 // POST JSON请求
 func (c *Client) PostJSON(ctx context.Context, url string, request, response interface{}, opts ...Option) (data []byte, code int, err error) {
-	return c.Post(ctx, url, "application/json", request, response, opts...)
+	return c.post(ctx, url, "application/json", request, response, opts...)
 }
 
 // 创建HTTP请求
@@ -148,25 +150,24 @@ func (c *Client) newRequest(ctx context.Context, method, contentType, url string
 		return
 	}
 
-	if t := trace.Get(ctx); t != nil {
-		t.Set(req.Header, c.name)
-	}
+	req.Header.Set("Content-Type", contentType)
 
 	for _, opt := range append(c.option, opts...) {
-		opt((*Request)(req))
+		if opt != nil {
+			opt(ctx, (*Request)(req))
+		}
 	}
 
-	if method == "GET" {
+	if method == "GET" && request != nil {
 		params, ok := request.(map[string]interface{})
 		if !ok {
 			return nil, errors.New("request must is map[string]interface{} type")
 		}
-		var form = make(map[string][]string)
+		var form = req.URL.Query()
 		for key, val := range params {
-			form[key] = []string{fmt.Sprint(val)}
+			form.Set(key, fmt.Sprint(val))
 		}
-		req.Form = form
-		req.URL.RawQuery = req.Form.Encode()
+		req.URL.RawQuery = form.Encode()
 	}
 
 	return
@@ -180,27 +181,42 @@ func (c *Client) marshalJSON(v interface{}) string {
 // 执行HTTP请求
 func (c *Client) do(ctx context.Context, method, contentType, url string, request, response interface{}, opts ...Option) (body []byte, code int, err error) {
 	var (
-		start     = time.Now()
-		retry     int
-		req       *http.Request
-		resp      *http.Response
-		responder Responder
+		start = time.Now()
+		retry int
+		req   *http.Request
+		resp  *http.Response
+		child = trace.Get(ctx).Child()
 	)
 
 	defer func() {
-		latency := time.Since(start)
-		var path = url
+		var (
+			code    = code
+			caller  = ""
+			callee  = url
+			latency = time.Since(start)
+		)
+
 		if req != nil {
-			path = req.URL.Path
+			callee = req.URL.Path
 		} else {
-			path = strings.TrimPrefix(path, "http://")
-			path = strings.TrimPrefix(path, "https://")
-			if index := strings.Index(path, "/"); index >= 0 {
-				path = path[index:]
+			callee = strings.TrimPrefix(callee, "http://")
+			callee = strings.TrimPrefix(callee, "https://")
+			if index := strings.Index(callee, "/"); index >= 0 {
+				callee = callee[index:]
 			}
 		}
 
-		log.I("TODO metric:", c.name, path, latency, err)
+		if err != nil && (code == 0 || code == http.StatusOK) {
+			code = 599
+		}
+
+		if child != nil && child.Request != nil {
+			caller = child.Request.URL.Path
+		}
+
+		metric.Rpc("zrpc", caller, callee, code, latency, map[string]interface{}{
+			"name": c.name,
+		})
 
 		if c.logger != nil {
 			output := c.logger.Info
@@ -216,6 +232,9 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 				"latency", latency,
 				"retry", retry,
 			)
+			if child != nil {
+				c.logger.Tag(false, "cspan_id", child.SpanID)
+			}
 			if req != nil {
 				c.logger.Tag(false, "url", req.URL.String())
 			} else {
@@ -236,9 +255,6 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 				c.logger.Tag(false, "resp", string(body))
 			}
 			if err != nil {
-				if responder != nil {
-					c.logger.Tag(false, "errno", responder.Code())
-				}
 				c.logger.Tag(false, "error", err.Error())
 			}
 
@@ -251,8 +267,12 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 		return
 	}
 
+	// 设置trace
+	if child != nil {
+		child.Set(req.Header, child.Caller)
+	}
+
 	// 请求重试
-retry:
 	for i := 0; i < c.retry+1; i++ {
 		if resp, err = c.client.Do(req); err == nil {
 			break
@@ -265,8 +285,8 @@ retry:
 	defer resp.Body.Close()
 
 	// 断言HTTP响应
-	if resp.StatusCode != http.StatusOK {
-		return nil, 0, fmt.Errorf("%s: http response code:%d, status:%s", c.name, resp.StatusCode, resp.Status)
+	if code = resp.StatusCode; code != http.StatusOK {
+		return nil, code, fmt.Errorf("%s: http response code:%d, status:%s", c.name, resp.StatusCode, resp.Status)
 	}
 
 	// 读取响应
@@ -274,28 +294,20 @@ retry:
 		return
 	}
 
-	// 没有业务层解析器, 直接返回
-	if responder = c.responder; responder == nil {
-		return body, resp.StatusCode, nil
+	// 解析body
+	var res Response
+	if err = json.Unmarshal(body, &res); err != nil {
+		return
+	}
+
+	// 断言业务层code
+	if code = res.Code; code != 0 {
+		return nil, code, fmt.Errorf("%s: http resonse code:%d, message:%s", c.name, res.Code, res.Message)
 	}
 
 	// 解析业务层响应
-	if err = json.Unmarshal(body, responder); err != nil {
-		return
-	}
-
-	// 断言业务层响应
-	if err = responder.Error(); err != nil {
-		// 业务层出错, 可重试
-		if responder.Retry() && retry < c.retry {
-			goto retry
-		}
-		return
-	}
-
-	// 解析业务层数据
 	if response != nil {
-		if err = json.Unmarshal(responder.Body(), response); err != nil {
+		if err = json.Unmarshal(res.Data, response); err != nil {
 			return
 		}
 	}

@@ -49,7 +49,25 @@ func (d Dao) List(ctx context.Context, query Query, form url.Values, where inter
 	return
 }
 
-func New(db func(ctx context.Context) *gorm.DB, model interface{}, table string) Dao {
+func (d Dao) Find(ctx context.Context, out interface{}, equal map[string][]interface{}) (err error) {
+	db := d.DB(ctx)
+	for key, where := range equal {
+		switch len(where) {
+		case 0:
+			continue
+		case 1:
+			db = db.Where(fmt.Sprintf("%v = ?", key), where[0])
+		default:
+			db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
+		}
+	}
+	if err = db.Find(out).Error; err != nil {
+		return
+	}
+	return
+}
+
+func NewDao(db func(ctx context.Context) *gorm.DB, model interface{}, table string) Dao {
 	return Dao{
 		db:    db,
 		Model: model,

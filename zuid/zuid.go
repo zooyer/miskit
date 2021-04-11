@@ -197,14 +197,6 @@ func (s Sort) Count() int {
 		s.Node: {},
 		s.Step: {},
 	})
-	var set = make(map[int64]struct{})
-
-	set[s.Rand] = struct{}{}
-	set[s.Time] = struct{}{}
-	set[s.Node] = struct{}{}
-	set[s.Step] = struct{}{}
-
-	return len(set)
 }
 
 func (n *Node) now() int64 {

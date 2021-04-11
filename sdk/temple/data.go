@@ -1,4 +1,4 @@
-package jcon
+package temple
 
 import (
 	"io/ioutil"
@@ -15,9 +15,9 @@ type cacheInfo struct {
 }
 
 var (
-	dir     string
-	mutex   sync.RWMutex
-	cache   = make(map[string]map[string]*cacheInfo)
+	dir   string
+	mutex sync.RWMutex
+	cache = make(map[string]map[string]*cacheInfo)
 )
 
 func readNamespace(dir string) (map[string]*cacheInfo, error) {

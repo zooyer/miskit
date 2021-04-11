@@ -1,4 +1,4 @@
-package jcon
+package temple
 
 import (
 	"fmt"
