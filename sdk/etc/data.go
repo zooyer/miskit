@@ -1,4 +1,4 @@
-package temple
+package etc
 
 import (
 	"io/ioutil"

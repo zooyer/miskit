@@ -24,7 +24,7 @@ const (
 
 var mutex sync.Mutex
 
-var _name string
+var prefix string
 
 var msg = map[int]string{
 	Success:        "ok",
@@ -35,9 +35,9 @@ var msg = map[int]string{
 
 func (e Error) String() string {
 	if e.error == nil {
-		return fmt.Sprintf("%s errno: %d, message:%s", _name, e.errno, e.message)
+		return fmt.Sprintf("%s errno: %d, message:%s", prefix, e.errno, e.message)
 	}
-	return fmt.Sprintf("%s errno: %d, message:%s, error:%v", _name, e.errno, e.message, e.error)
+	return fmt.Sprintf("%s errno: %d, message:%s, error:%v", prefix, e.errno, e.message, e.error)
 }
 
 func (e Error) Errno() int {
@@ -58,7 +58,7 @@ func (e Error) Metric() {
 	}
 	e.metric = true
 	// TODO metric
-	fmt.Println("METRIC:", _name, "errno:", e.errno)
+	fmt.Println("METRIC:", prefix, "errno:", e.errno)
 }
 
 func (e Error) Record(ctx context.Context) Error {
@@ -75,7 +75,7 @@ func Register(name string, errno map[int]string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	_name = name
+	prefix = name
 
 	for errno, message := range errno {
 		if _, exists := msg[errno]; exists {

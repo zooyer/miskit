@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/sftp"
-	"github.com/zooyer/miskit/pool"
+	"github.com/zooyer/miskit/utils/pool"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"os"
