@@ -5,6 +5,9 @@ type Model struct {
 	CreatedAt int64  `json:"created_at"`
 	UpdatedAt int64  `json:"updated_at"`
 	DeletedAt int64  `json:"deleted_at" sql:"index"`
+	CreatedID int64  `json:"created_id"`
+	UpdatedID int64  `json:"updated_id"`
+	DeletedID int64  `json:"deleted_id"`
 	CreatedBy string `json:"created_by"`
 	UpdatedBy string `json:"updated_by"`
 	DeletedBy string `json:"deleted_by"`

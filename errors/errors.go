@@ -86,6 +86,10 @@ func Register(name string, errno map[int]string) {
 }
 
 func New(errno int, error error) Error {
+	if err, ok := error.(Error); ok {
+		return err
+	}
+
 	return Error{
 		errno:   errno,
 		error:   error,
