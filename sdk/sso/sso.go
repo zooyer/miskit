@@ -37,6 +37,18 @@ func New(option Option) *Client {
 	}
 }
 
+func (c *Client) LoginURL(ctx context.Context) string {
+	return fmt.Sprintf("http://%s/sso/login", c.option.Addr)
+}
+
+func (c *Client) LogoutURL(ctx context.Context) string {
+	return fmt.Sprintf("http://%s/sso/logout", c.option.Addr)
+}
+
+func (c *Client) LoggedURL(ctx context.Context) string {
+	return fmt.Sprintf("http://%s/sso/logged", c.option.Addr)
+}
+
 func (c *Client) Validate(ctx context.Context, ticket string) (resp *Response, err error) {
 	var request = map[string]interface{}{
 		"app_id":     c.option.AppID,
