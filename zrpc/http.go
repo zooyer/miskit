@@ -294,19 +294,19 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 		return
 	}
 
-	// 解析body
-	var res Response
-	if err = json.Unmarshal(body, &res); err != nil {
-		return
-	}
-
-	// 断言业务层code
-	if code = res.Code; code != 0 {
-		return nil, code, fmt.Errorf("%s: http resonse code:%d, message:%s", c.name, res.Code, res.Message)
-	}
-
 	// 解析业务层响应
 	if response != nil {
+		// 解析body
+		var res Response
+		if err = json.Unmarshal(body, &res); err != nil {
+			return
+		}
+
+		// 断言业务层code
+		if code = res.Code; code != 0 {
+			return nil, code, fmt.Errorf("%s: http resonse code:%d, message:%s", c.name, res.Code, res.Message)
+		}
+
 		if err = json.Unmarshal(res.Data, response); err != nil {
 			return
 		}
