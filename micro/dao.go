@@ -49,6 +49,24 @@ func (d Dao) List(ctx context.Context, query Query, form url.Values, where inter
 	return
 }
 
+func (d Dao) First(ctx context.Context, out interface{}, equal map[string][]interface{}) (err error) {
+	db := d.DB(ctx)
+	for key, where := range equal {
+		switch len(where) {
+		case 0:
+			continue
+		case 1:
+			db = db.Where(fmt.Sprintf("%v = ?", key), where[0])
+		default:
+			db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
+		}
+	}
+	if err = db.First(out).Error; err != nil {
+		return
+	}
+	return
+}
+
 func (d Dao) Find(ctx context.Context, out interface{}, equal map[string][]interface{}) (err error) {
 	db := d.DB(ctx)
 	for key, where := range equal {

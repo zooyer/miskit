@@ -3,8 +3,11 @@ package sso
 import (
 	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/zooyer/miskit/log"
 	"github.com/zooyer/miskit/zrpc"
+	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -49,7 +52,7 @@ func (c *Client) LoggedURL(ctx context.Context) string {
 	return fmt.Sprintf("http://%s/sso/logged", c.option.Addr)
 }
 
-func (c *Client) Validate(ctx context.Context, ticket string) (resp *Response, err error) {
+func (c *Client) Validate(ctx *gin.Context, ticket string) (resp *Response, err error) {
 	var request = map[string]interface{}{
 		"app_id":     c.option.AppID,
 		"app_secret": c.option.AppSecret,
@@ -57,9 +60,51 @@ func (c *Client) Validate(ctx context.Context, ticket string) (resp *Response, e
 	}
 	var response Response
 
-	if _, _, err = c.client.PostJSON(ctx, c.url, request, &response); err != nil {
+	var header = []string{"Client-ID", "Client-UA", "Client-Info"}
+
+	var option zrpc.Option = func(_ context.Context, req *zrpc.Request) {
+		for _, key := range header {
+			req.Header.Set(key, ctx.GetHeader(key))
+		}
+	}
+
+	if _, _, err = c.client.PostJSON(ctx, c.url, request, &response, option); err != nil {
 		return
 	}
 
 	return &response, nil
+}
+
+// GetCPUID 获取cpuid
+func GetCPUID() string {
+	var cpuid string
+	cmd := exec.Command("wmic", "cpu", "get", "processorid")
+	b, e := cmd.CombinedOutput()
+
+	if e == nil {
+		cpuid = string(b)
+		cpuid = cpuid[12 : len(cpuid)-2]
+		cpuid = strings.ReplaceAll(cpuid, "\n", "")
+	} else {
+		fmt.Printf("%v", e)
+	}
+
+	return cpuid
+}
+
+// GetBaseBoardID 获取主板的id
+func GetBaseBoardID() string {
+	var cpuid string
+	cmd := exec.Command("wmic", "baseboard", "get", "serialnumber")
+	b, e := cmd.CombinedOutput()
+
+	if e == nil {
+		cpuid = string(b)
+		cpuid = cpuid[12 : len(cpuid)-2]
+		cpuid = strings.ReplaceAll(cpuid, "\n", "")
+	} else {
+		fmt.Printf("%v", e)
+	}
+
+	return cpuid
 }
