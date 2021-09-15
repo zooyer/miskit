@@ -14,8 +14,25 @@ type Dao struct {
 	Table string
 }
 
+type Where map[string]interface{}
+
 func (d Dao) DB(ctx context.Context) *gorm.DB {
 	return d.db(ctx).Table(d.Table)
+}
+
+func (d Dao) Equal(ctx context.Context, equal map[string][]interface{}) *gorm.DB {
+	db := d.DB(ctx)
+	for key, where := range equal {
+		switch len(where) {
+		case 0:
+			continue
+		case 1:
+			db = db.Where(fmt.Sprintf("%v = ?", key), where[0])
+		default:
+			db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
+		}
+	}
+	return db
 }
 
 func (d Dao) Transaction(ctx context.Context, fn func(tx *gorm.DB) (err error)) (err error) {
@@ -30,6 +47,13 @@ func (d Dao) Transaction(ctx context.Context, fn func(tx *gorm.DB) (err error)) 
 		}
 	}()
 	return fn(tx)
+}
+
+func (d Dao) Count(ctx context.Context, where map[string]interface{}) (count int, err error) {
+	if err = d.DB(ctx).Where(where).Count(&count).Error; err != nil {
+		return
+	}
+	return
 }
 
 func (d Dao) List(ctx context.Context, query Query, form url.Values, where interface{}, out interface{}) (total int, err error) {
@@ -50,39 +74,21 @@ func (d Dao) List(ctx context.Context, query Query, form url.Values, where inter
 }
 
 func (d Dao) First(ctx context.Context, out interface{}, equal map[string][]interface{}) (err error) {
-	db := d.DB(ctx)
-	for key, where := range equal {
-		switch len(where) {
-		case 0:
-			continue
-		case 1:
-			db = db.Where(fmt.Sprintf("%v = ?", key), where[0])
-		default:
-			db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
-		}
-	}
-	if err = db.First(out).Error; err != nil {
+	if err = d.Equal(ctx, equal).First(out).Error; err != nil {
 		return
 	}
 	return
 }
 
 func (d Dao) Find(ctx context.Context, out interface{}, equal map[string][]interface{}) (err error) {
-	db := d.DB(ctx)
-	for key, where := range equal {
-		switch len(where) {
-		case 0:
-			continue
-		case 1:
-			db = db.Where(fmt.Sprintf("%v = ?", key), where[0])
-		default:
-			db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
-		}
-	}
-	if err = db.Find(out).Error; err != nil {
+	if err = d.Equal(ctx, equal).Find(out).Error; err != nil {
 		return
 	}
 	return
+}
+
+func (d Dao) Update(ctx context.Context, equal map[string][]interface{}, update map[string]interface{}) (err error) {
+	return d.Equal(ctx, equal).Update(update).Error
 }
 
 func NewDao(db func(ctx context.Context) *gorm.DB, model interface{}, table string) Dao {
