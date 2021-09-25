@@ -83,10 +83,16 @@ func NewForm(v interface{}) map[string]interface{} {
 // 创建HTTP客户端
 func New(name string, retry int, timeout time.Duration, logger *log.Logger, opts ...Option) *Client {
 	var connTimeout = timeout / 5
-	if connTimeout.Milliseconds() < 5 {
-		connTimeout = 5 * time.Millisecond
+	if timeout != 0 {
+		if connTimeout.Milliseconds() < 5 {
+			connTimeout = 5 * time.Millisecond
+		}
+		timeout -= connTimeout
+
+		if timeout <= 0 {
+			panic("timeout must be greater than 5ms")
+		}
 	}
-	timeout -= connTimeout
 
 	return &Client{
 		name:    name,
