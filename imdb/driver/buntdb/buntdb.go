@@ -3,7 +3,7 @@ package buntdb
 import (
 	"context"
 	"github.com/tidwall/buntdb"
-	"github.com/zooyer/miskit/kvs"
+	"github.com/zooyer/miskit/imdb"
 	"time"
 )
 
@@ -13,7 +13,7 @@ type buntdbConn struct {
 
 type BuntdbDriver int
 
-func (b BuntdbDriver) Open(args string) (conn kvs.Conn, err error) {
+func (b BuntdbDriver) Open(args string) (conn imdb.Conn, err error) {
 	var c buntdbConn
 
 	if c.db, err = buntdb.Open(args); err != nil {
@@ -80,5 +80,5 @@ func (c buntdbConn) Del(ctx context.Context, key string) (err error) {
 }
 
 func init() {
-	kvs.Register("buntdb", new(BuntdbDriver))
+	imdb.Register("buntdb", new(BuntdbDriver))
 }

@@ -1,4 +1,4 @@
-package kvs
+package imdb
 
 import (
 	"context"
@@ -28,11 +28,11 @@ func Register(name string, driver Driver) {
 	defer mutex.Unlock()
 
 	if driver == nil {
-		panic("kvs: Register driver is nil")
+		panic("imdb: Register driver is nil")
 	}
 
 	if _, dup := drivers[name]; dup {
-		panic("kvs: Register called twice for driver " + name)
+		panic("imdb: Register called twice for driver " + name)
 	}
 
 	drivers[name] = driver
@@ -41,7 +41,7 @@ func Register(name string, driver Driver) {
 func Open(dialect string, args string) (conn Conn, err error) {
 	driver, exists := drivers[dialect]
 	if !exists || driver == nil {
-		return nil, fmt.Errorf("kvs: unknown driver %q (forgotten import?)", dialect)
+		return nil, fmt.Errorf("imdb: unknown driver %q (forgotten import?)", dialect)
 	}
 
 	return driver.Open(args)

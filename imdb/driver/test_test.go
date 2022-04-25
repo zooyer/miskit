@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zooyer/miskit/kvs"
-	"github.com/zooyer/miskit/kvs/driver/buntdb"
-	"github.com/zooyer/miskit/kvs/driver/redis"
+	"github.com/zooyer/miskit/imdb"
+	"github.com/zooyer/miskit/imdb/driver/buntdb"
+	"github.com/zooyer/miskit/imdb/driver/redis"
 )
 
 var (
@@ -31,7 +31,7 @@ func TestOpen(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		conn, err := kvs.Open(test.dialect, test.args)
+		conn, err := imdb.Open(test.dialect, test.args)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -3,7 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/zooyer/miskit/kvs"
+	"github.com/zooyer/miskit/imdb"
 	"strconv"
 	"strings"
 	"time"
@@ -105,7 +105,7 @@ func (r RedisDriver) parseArgs(args string) (opts *godis.Option, err error) {
 	return &options, nil
 }
 
-func (r RedisDriver) Open(args string) (conn kvs.Conn, err error) {
+func (r RedisDriver) Open(args string) (conn imdb.Conn, err error) {
 	var c redisConn
 
 	opts, err := r.parseArgs(args)
@@ -150,5 +150,5 @@ func (c redisConn) Del(ctx context.Context, key string) (err error) {
 }
 
 func init() {
-	kvs.Register("redis", new(RedisDriver))
+	imdb.Register("redis", new(RedisDriver))
 }
