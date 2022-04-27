@@ -26,7 +26,7 @@ func (c Controller) Bind(ctx *gin.Context, v interface{}) (err error) {
 
 	if validator, ok := v.(Validator); ok {
 		if err = validator.Valid(ctx); err != nil {
-			return
+			return errors.New(errors.InvalidRequest, err)
 		}
 	}
 
