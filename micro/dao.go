@@ -14,17 +14,23 @@ type Dao struct {
 	Table string
 }
 
-type Where map[string]interface{}
+type Where interface{}
+
+type Update map[string]interface{}
+
+type Equal map[string]interface{}
+
+type Include map[string][]interface{}
 
 func (d Dao) DB(ctx context.Context) *gorm.DB {
 	return d.db(ctx).Table(d.Table)
 }
 
-func (d Dao) Equal(ctx context.Context, equal map[string]interface{}) *gorm.DB {
+func (d Dao) Equal(ctx context.Context, equal Equal) *gorm.DB {
 	return d.DB(ctx).Where(equal)
 }
 
-func (d Dao) Include(ctx context.Context, include map[string][]interface{}) *gorm.DB {
+func (d Dao) Include(ctx context.Context, include Include) *gorm.DB {
 	db := d.DB(ctx)
 	for key, where := range include {
 		db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
@@ -46,14 +52,14 @@ func (d Dao) Transaction(ctx context.Context, fn func(tx *gorm.DB) (err error)) 
 	return fn(tx)
 }
 
-func (d Dao) Count(ctx context.Context, where map[string]interface{}) (count int, err error) {
-	if err = d.DB(ctx).Where(where).Count(&count).Error; err != nil {
+func (d Dao) Count(ctx context.Context, equal Equal) (count int, err error) {
+	if err = d.DB(ctx).Where(equal).Count(&count).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (d Dao) List(ctx context.Context, query Query, form url.Values, where interface{}, out interface{}) (total int, err error) {
+func (d Dao) List(ctx context.Context, query Query, form url.Values, where Where, out interface{}) (total int, err error) {
 	if err = d.Transaction(ctx, func(tx *gorm.DB) (err error) {
 		if err = d.DB(ctx).Scopes(ByQuery(d.Model, form)).Where(where).Count(&total).Error; err != nil {
 			return
@@ -70,21 +76,21 @@ func (d Dao) List(ctx context.Context, query Query, form url.Values, where inter
 	return
 }
 
-func (d Dao) First(ctx context.Context, out interface{}, equal map[string]interface{}) (err error) {
+func (d Dao) First(ctx context.Context, out interface{}, equal Equal) (err error) {
 	if err = d.Equal(ctx, equal).First(out).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (d Dao) Find(ctx context.Context, out interface{}, equal map[string]interface{}) (err error) {
+func (d Dao) Find(ctx context.Context, out interface{}, equal Equal) (err error) {
 	if err = d.Equal(ctx, equal).Find(out).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (d Dao) Update(ctx context.Context, equal map[string]interface{}, update map[string]interface{}) (err error) {
+func (d Dao) Update(ctx context.Context, equal Equal, update Update) (err error) {
 	return d.Equal(ctx, equal).Update(update).Error
 }
 
