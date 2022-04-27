@@ -15,11 +15,9 @@ type Dao struct {
 	Table string
 }
 
-type Where interface{}
+type Equal map[string]interface{}
 
 type Update map[string]interface{}
-
-type Equal map[string]interface{}
 
 type Include map[string][]interface{}
 
@@ -27,16 +25,33 @@ func (d Dao) DB(ctx context.Context) *gorm.DB {
 	return d.db(ctx).Table(d.Table)
 }
 
+func (d Dao) undeleted() func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Where("deleted_at = ?", 0)
+	}
+}
+
+func (d Dao) equal(equal Equal) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Where(equal).Scopes(d.undeleted())
+	}
+}
+
+func (d Dao) include(include Include) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		for key, where := range include {
+			db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
+		}
+		return db.Scopes(d.undeleted())
+	}
+}
+
 func (d Dao) Equal(ctx context.Context, equal Equal) *gorm.DB {
-	return d.DB(ctx).Where(equal)
+	return d.DB(ctx).Scopes(d.equal(equal))
 }
 
 func (d Dao) Include(ctx context.Context, include Include) *gorm.DB {
-	db := d.DB(ctx)
-	for key, where := range include {
-		db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
-	}
-	return db
+	return d.DB(ctx).Scopes(d.include(include))
 }
 
 func (d Dao) Transaction(ctx context.Context, fn func(tx *gorm.DB) (err error)) (err error) {
@@ -54,19 +69,19 @@ func (d Dao) Transaction(ctx context.Context, fn func(tx *gorm.DB) (err error)) 
 }
 
 func (d Dao) Count(ctx context.Context, equal Equal) (count int, err error) {
-	if err = d.DB(ctx).Where(equal).Count(&count).Error; err != nil {
+	if err = d.Equal(ctx, equal).Count(&count).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (d Dao) List(ctx context.Context, query Query, form url.Values, where Where, out interface{}) (total int, err error) {
+func (d Dao) List(ctx context.Context, query Query, form url.Values, include Include, out interface{}) (total int, err error) {
 	if err = d.Transaction(ctx, func(tx *gorm.DB) (err error) {
-		if err = d.DB(ctx).Scopes(ByQuery(d.Model, form)).Where(where).Count(&total).Error; err != nil {
+		if err = tx.Scopes(ByQuery(d.Model, form), d.include(include)).Count(&total).Error; err != nil {
 			return
 		}
 
-		if err = d.DB(ctx).Scopes(query.ByQuery(d.Model), ByQuery(d.Model, form)).Where(where).Find(out).Error; err != nil {
+		if err = tx.Scopes(query.ByQuery(d.Model), ByQuery(d.Model, form), d.include(include)).Find(&out).Error; err != nil {
 			return
 		}
 
