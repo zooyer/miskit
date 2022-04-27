@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/tidwall/buntdb v1.2.9
 	github.com/tj/assert v0.0.3 // indirect
-	github.com/zooyer/jsons v0.0.0-20210201142158-e93b1aadec26
+	github.com/zooyer/jsons v0.0.0-20220427131524-ade9477c73db
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
 )
