@@ -28,9 +28,9 @@ var prefix string
 
 var msg = map[int]string{
 	Success:        "ok",
-	InvalidRequest: "invalid request",
-	UnknownError:   "unknown error",
-	ServicePanic:   "service panic",
+	InvalidRequest: "请求无效",
+	UnknownError:   "未知错误",
+	ServicePanic:   "程序崩溃",
 }
 
 func (e Error) String() string {
