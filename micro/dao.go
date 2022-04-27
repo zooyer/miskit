@@ -2,6 +2,7 @@ package micro
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -88,6 +89,21 @@ func (d Dao) Find(ctx context.Context, out interface{}, equal Equal) (err error)
 		return
 	}
 	return
+}
+
+func (d Dao) Create(ctx context.Context, equal Equal, value interface{}) (err error) {
+	return d.Transaction(ctx, func(tx *gorm.DB) (err error) {
+		var count int
+		if count, err = d.Count(ctx, equal); err != nil {
+			return
+		}
+
+		if count > 0 {
+			return errors.New("record already exists")
+		}
+
+		return tx.Create(value).Error
+	})
 }
 
 func (d Dao) Update(ctx context.Context, equal Equal, update Update) (err error) {
