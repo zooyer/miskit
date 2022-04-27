@@ -15,10 +15,21 @@ type Response struct {
 
 type Controller struct{}
 
+type Validator interface {
+	Valid(ctx *gin.Context) error
+}
+
 func (c Controller) Bind(ctx *gin.Context, v interface{}) (err error) {
 	if err = ctx.Bind(v); err != nil {
 		return errors.New(errors.InvalidRequest, err)
 	}
+
+	if validator, ok := v.(Validator); ok {
+		if err = validator.Valid(ctx); err != nil {
+			return
+		}
+	}
+
 	return
 }
 
