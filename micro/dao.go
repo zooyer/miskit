@@ -37,7 +37,7 @@ func (d Dao) equal(equal Equal) func(db *gorm.DB) *gorm.DB {
 		if equal == nil {
 			return db
 		}
-		return db.Where(equal).Scopes(d.undeleted())
+		return db.Where(map[string]interface{}(equal)).Scopes(d.undeleted())
 	}
 }
 
