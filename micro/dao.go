@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/jinzhu/gorm"
 )
@@ -33,6 +34,9 @@ func (d Dao) undeleted() func(db *gorm.DB) *gorm.DB {
 
 func (d Dao) equal(equal Equal) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
+		if equal == nil {
+			return db
+		}
 		return db.Where(equal).Scopes(d.undeleted())
 	}
 }
@@ -123,6 +127,12 @@ func (d Dao) Create(ctx context.Context, equal Equal, value interface{}) (err er
 
 func (d Dao) Update(ctx context.Context, equal Equal, update Update) (err error) {
 	return d.Equal(ctx, equal).Update(update).Error
+}
+
+func (d Dao) Delete(ctx context.Context, equal Equal) (err error) {
+	return d.Update(ctx, equal, Update{
+		"deleted_at": time.Now(),
+	})
 }
 
 func NewDao(db func(ctx context.Context) *gorm.DB, model interface{}, table string) Dao {
