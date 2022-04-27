@@ -20,17 +20,14 @@ func (d Dao) DB(ctx context.Context) *gorm.DB {
 	return d.db(ctx).Table(d.Table)
 }
 
-func (d Dao) Equal(ctx context.Context, equal map[string][]interface{}) *gorm.DB {
+func (d Dao) Equal(ctx context.Context, equal map[string]interface{}) *gorm.DB {
+	return d.DB(ctx).Where(equal)
+}
+
+func (d Dao) Include(ctx context.Context, include map[string][]interface{}) *gorm.DB {
 	db := d.DB(ctx)
-	for key, where := range equal {
-		switch len(where) {
-		case 0:
-			continue
-		case 1:
-			db = db.Where(fmt.Sprintf("%v = ?", key), where[0])
-		default:
-			db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
-		}
+	for key, where := range include {
+		db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
 	}
 	return db
 }
@@ -73,21 +70,21 @@ func (d Dao) List(ctx context.Context, query Query, form url.Values, where inter
 	return
 }
 
-func (d Dao) First(ctx context.Context, out interface{}, equal map[string][]interface{}) (err error) {
+func (d Dao) First(ctx context.Context, out interface{}, equal map[string]interface{}) (err error) {
 	if err = d.Equal(ctx, equal).First(out).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (d Dao) Find(ctx context.Context, out interface{}, equal map[string][]interface{}) (err error) {
+func (d Dao) Find(ctx context.Context, out interface{}, equal map[string]interface{}) (err error) {
 	if err = d.Equal(ctx, equal).Find(out).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (d Dao) Update(ctx context.Context, equal map[string][]interface{}, update map[string]interface{}) (err error) {
+func (d Dao) Update(ctx context.Context, equal map[string]interface{}, update map[string]interface{}) (err error) {
 	return d.Equal(ctx, equal).Update(update).Error
 }
 
