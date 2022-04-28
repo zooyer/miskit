@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 
 var (
 	_ redis.RedisDriver
-	_ buntdb.BuntdbDriver
+	_ buntdb.Driver
 )
 
 func TestOpen(t *testing.T) {
@@ -41,35 +42,33 @@ func TestOpen(t *testing.T) {
 		if err = conn.Set(ctx, "name", "张三"); err != nil {
 			t.Fatal(err)
 		}
-
 		value, err := conn.Get(ctx, "name")
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		if value != "张三" {
-			t.Fatal("value:", value, "!= \"张三\"")
-		}
+		assert.Equal(t, "张三", value)
 
 		if err = conn.SetEx(ctx, "name", "李四", time.Second); err != nil {
 			t.Fatal(err)
 		}
-
 		if value, err = conn.Get(ctx, "name"); err != nil {
 			t.Fatal(err)
 		}
-		if value != "李四" {
-			t.Fatal("value:", value, "!= \"李四\"")
-		}
+		assert.Equal(t, "李四", value)
 
 		time.Sleep(time.Second)
 
 		if value, err = conn.Get(ctx, "name"); err != nil {
 			t.Fatal(err)
 		}
+		assert.Equal(t, "", value)
 
-		if value != "" {
-			t.Fatal("value:", value, "!= \"\"")
+		if err = conn.Del(ctx, "name"); err != nil {
+			t.Fatal(err)
+		}
+
+		if err = conn.Del(ctx, "name"); err != nil {
+			t.Fatal(err)
 		}
 	}
 }

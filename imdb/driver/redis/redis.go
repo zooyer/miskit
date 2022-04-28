@@ -3,21 +3,21 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/zooyer/miskit/imdb"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/piaohao/godis"
+	"github.com/zooyer/miskit/imdb"
 )
 
 type redisConn struct {
 	rds *godis.Redis
 }
 
-type RedisDriver int
+type redisDriver int
 
-func (r RedisDriver) parseDuration(str string) (duration time.Duration, err error) {
+func (r redisDriver) parseDuration(str string) (duration time.Duration, err error) {
 	if len(str) < 2 {
 		return 0, fmt.Errorf("duration error")
 	}
@@ -49,7 +49,7 @@ func (r RedisDriver) parseDuration(str string) (duration time.Duration, err erro
 	return 0, fmt.Errorf("unknown time unit: %s", unit)
 }
 
-func (r RedisDriver) parseArgs(args string) (opts *godis.Option, err error) {
+func (r redisDriver) parseArgs(args string) (opts *godis.Option, err error) {
 	var options = godis.Option{
 		Host:              "localhost",
 		Port:              6379,
@@ -105,7 +105,7 @@ func (r RedisDriver) parseArgs(args string) (opts *godis.Option, err error) {
 	return &options, nil
 }
 
-func (r RedisDriver) Open(args string) (conn imdb.Conn, err error) {
+func (r redisDriver) Open(args string) (conn imdb.Conn, err error) {
 	var c redisConn
 
 	opts, err := r.parseArgs(args)
@@ -150,5 +150,5 @@ func (c redisConn) Del(ctx context.Context, key string) (err error) {
 }
 
 func init() {
-	imdb.Register("redis", new(RedisDriver))
+	imdb.Register("redis", new(redisDriver))
 }
