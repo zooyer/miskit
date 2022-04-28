@@ -105,14 +105,14 @@ func (d Dao) List(ctx context.Context, query Query, include Include, out interfa
 	return
 }
 
-func (d Dao) First(ctx context.Context, out interface{}, equal Equal) (err error) {
+func (d Dao) First(ctx context.Context, equal Equal, out interface{}) (err error) {
 	if err = d.Equal(ctx, equal).First(out).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (d Dao) Find(ctx context.Context, out interface{}, equal Equal) (err error) {
+func (d Dao) Find(ctx context.Context, equal Equal, out interface{}) (err error) {
 	if err = d.Equal(ctx, equal).Find(out).Error; err != nil {
 		return
 	}
