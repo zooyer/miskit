@@ -14,8 +14,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func get(engine *gin.Engine, uri string) *httptest.ResponseRecorder {
+func get(engine *gin.Engine, uri string, header ...http.Header) *httptest.ResponseRecorder {
 	req := httptest.NewRequest("GET", uri, nil)
+	for _, header := range header {
+		for key, header := range header {
+			req.Header[key] = header
+		}
+	}
 	res := httptest.NewRecorder()
 	engine.ServeHTTP(res, req)
 	return res

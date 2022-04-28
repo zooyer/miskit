@@ -4,7 +4,10 @@ go 1.16
 
 require (
 	github.com/bwmarrin/snowflake v0.3.0
+	github.com/gin-contrib/sessions v0.0.5
 	github.com/gin-gonic/gin v1.7.7
+	github.com/gorilla/securecookie v1.1.1
+	github.com/gorilla/sessions v1.2.1
 	github.com/piaohao/godis v0.0.18
 	github.com/pkg/sftp v1.13.4
 	github.com/spf13/viper v1.11.0

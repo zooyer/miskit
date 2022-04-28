@@ -108,7 +108,7 @@ func Msg(errno int) string {
 	if msg, exists := msg[errno]; exists {
 		return msg
 	}
-	return "unknown errno"
+	return "未定义错误码"
 }
 
 func Is(err error, errno int) bool {
