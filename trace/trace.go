@@ -17,9 +17,11 @@ import (
 )
 
 type Trace struct {
+	Callee  string          `json:"callee,omitempty"`
 	Caller  string          `json:"caller,omitempty"`
 	TraceID string          `json:"trace_id,omitempty"`
 	SpanID  string          `json:"span_id,omitempty"`
+	ChildID string          `json:"child_id,omitempty"`
 	Lang    string          `json:"lang,omitempty"`
 	Tag     string          `json:"tag,omitempty"`
 	Content json.RawMessage `json:"content,omitempty"`
@@ -47,13 +49,14 @@ var (
 	}
 )
 
-func New(req *http.Request, caller string) *Trace {
+func New(req *http.Request, callee string) *Trace {
 	var trace = new(Trace)
 
-	trace.Caller = caller
+	trace.Callee = callee
 
 	if req != nil {
 		trace.TraceID = req.Header.Get(httpHeaderKeyTraceID)
+		trace.Caller = req.Header.Get(httpHeaderKeyCaller)
 		trace.SpanID = req.Header.Get(httpHeaderKeySpanID)
 		trace.Lang = req.Header.Get(httpHeaderKeyLang)
 		trace.Tag = req.Header.Get(httpHeaderKeyTag)
@@ -62,7 +65,7 @@ func New(req *http.Request, caller string) *Trace {
 	}
 
 	if trace.TraceID == "" {
-		trace.TraceID = GenTraceID()
+		trace.TraceID = genTraceID()
 	}
 
 	return trace
@@ -84,17 +87,20 @@ func Set(ctx context.Context, trace *Trace) context.Context {
 }
 
 func Get(ctx context.Context) *Trace {
-	var trace = New(nil, "")
+	var trace *Trace
 	switch ctx := ctx.(type) {
 	case *gin.Context:
-		trace, _ = ctx.MustGet(contextKey).(*Trace)
+		if value, exists := ctx.Get(contextKey); exists {
+			trace, _ = value.(*Trace)
+		}
 	default:
 		trace, _ = ctx.Value(contextKey).(*Trace)
 	}
 	return trace
 }
 
-func (t *Trace) Set(header http.Header, caller string) {
+// SetHeader 设置到请求头
+func (t *Trace) SetHeader(header http.Header) {
 	if t == nil {
 		return
 	}
@@ -102,24 +108,25 @@ func (t *Trace) Set(header http.Header, caller string) {
 	if t.TraceID != "" {
 		header.Set(httpHeaderKeyTraceID, t.TraceID)
 	} else {
-		header.Set(httpHeaderKeyTraceID, GenTraceID())
+		header.Set(httpHeaderKeyTraceID, genTraceID())
 	}
-	header.Set(httpHeaderKeySpanID, GenSpanID())
+	header.Set(httpHeaderKeySpanID, genSpanID())
 	if t.Lang != "" {
 		header.Set(httpHeaderKeyLang, t.Lang)
 	}
 	if t.Tag != "" {
 		header.Set(httpHeaderKeyTag, t.Tag)
 	}
-	if caller != "" {
-		header.Set(httpHeaderKeyCaller, caller)
+	if t.Callee != "" {
+		header.Set(httpHeaderKeyCaller, t.Callee)
 	}
 	if len(t.Content) > 0 {
 		header.Set(httpHeaderKeyContent, string(t.Content))
 	}
 }
 
-func (t *Trace) Child() *Trace {
+// GenChild 生成子trace
+func (t *Trace) GenChild() *Trace {
 	if t == nil {
 		return nil
 	}
@@ -129,11 +136,12 @@ func (t *Trace) Child() *Trace {
 	trace = *t
 	trace.Content = make(json.RawMessage, len(t.Content))
 	copy(trace.Content, t.Content)
-	trace.SpanID = GenSpanID()
+	trace.SpanID = genSpanID()
 
 	return &trace
 }
 
+// Clone 深度拷贝克隆
 func (t *Trace) Clone() *Trace {
 	if t == nil {
 		return nil
@@ -148,12 +156,14 @@ func (t *Trace) Clone() *Trace {
 	return &trace
 }
 
+// String 序列化成字符串
 func (t *Trace) String() string {
 	data, _ := json.Marshal(t)
 	return string(data)
 }
 
-func GenTraceID() string {
+// genTraceID 生成trace id
+func genTraceID() string {
 	pid := os.Getegid()
 	now := time.Now()
 	unix := now.Unix()
@@ -173,10 +183,12 @@ func GenTraceID() string {
 	return buf.String()
 }
 
-func GenSpanID() string {
+// genSpanID 生成
+func genSpanID() string {
 	return fmt.Sprintf("%x", rand.Int63())
 }
 
+// getLocalIP 获取本机IP地址
 func getLocalIP() string {
 	addr, err := net.InterfaceAddrs()
 	if err != nil {

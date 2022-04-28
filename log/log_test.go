@@ -79,7 +79,7 @@ func TestNew(t *testing.T) {
 	}
 
 	var ctx = context.Background()
-	traceInfo := trace.New(nil)
+	traceInfo := trace.New(nil, "test")
 	traceInfo.Tag = "test"
 	traceInfo.Lang = "zh-CN"
 	traceInfo.SpanID = "this is span id"

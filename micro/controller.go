@@ -16,7 +16,7 @@ type Response struct {
 type Controller struct{}
 
 type Validator interface {
-	Valid(ctx *gin.Context) error
+	Valid(ctx *gin.Context) (err error)
 }
 
 func (c Controller) Bind(ctx *gin.Context, v interface{}) (err error) {
@@ -33,7 +33,7 @@ func (c Controller) Bind(ctx *gin.Context, v interface{}) (err error) {
 	return
 }
 
-func (c Controller) Response(ctx *gin.Context, err error, data interface{}) {
+func (c Controller) Response(ctx *gin.Context, data interface{}, err error) {
 	var resp Response
 	if err != nil {
 		eno, ok := err.(errors.Error)

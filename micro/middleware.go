@@ -69,20 +69,21 @@ func Logger(logger *log.Logger) gin.HandlerFunc {
 	}
 }
 
-func Recovery(logger *log.Logger) gin.HandlerFunc {
+func Recover(logger *log.Logger) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		defer func() {
 			if e := recover(); e != nil {
 				logger.Tag(false, "panic", e).Error(ctx, string(debug.Stack()))
 				errors.New(errors.ServicePanic, fmt.Errorf("%v", e)).Metric()
+				ctx.AbortWithStatusJSON(http.StatusInternalServerError, e)
 			}
 		}()
 		ctx.Next()
 	}
 }
 
-func Trace(caller string) gin.HandlerFunc {
+func Trace(callee string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		trace.Set(ctx, trace.New(ctx.Request, caller))
+		trace.Set(ctx, trace.New(ctx.Request, callee))
 	}
 }

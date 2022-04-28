@@ -4,16 +4,29 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
+type Model struct {
+	ID        uint   `json:"id" gorm:"primary_key"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
+	DeletedAt int64  `json:"deleted_at" sql:"index"`
+	CreatedID int64  `json:"created_id"`
+	UpdatedID int64  `json:"updated_id"`
+	DeletedID int64  `json:"deleted_id"`
+	CreatedBy string `json:"created_by"`
+	UpdatedBy string `json:"updated_by"`
+	DeletedBy string `json:"deleted_by"`
+}
+
 type Dao struct {
-	db    func(ctx context.Context) *gorm.DB
-	Model interface{}
-	Table string
+	db      func(ctx context.Context) *gorm.DB
+	model   schema.Tabler
+	deleted bool
 }
 
 type Equal map[string]interface{}
@@ -23,7 +36,17 @@ type Update map[string]interface{}
 type Include map[string][]interface{}
 
 func (d Dao) DB(ctx context.Context) *gorm.DB {
-	return d.db(ctx).Table(d.Table)
+	var db = d.db(ctx).Model(d.model)
+
+	if d.deleted {
+		return db
+	}
+
+	return db.Scopes(d.undeleted())
+}
+
+func (d Dao) QueryDeleted(ok bool) {
+	d.deleted = true
 }
 
 func (d Dao) undeleted() func(db *gorm.DB) *gorm.DB {
@@ -37,7 +60,7 @@ func (d Dao) equal(equal Equal) func(db *gorm.DB) *gorm.DB {
 		if equal == nil {
 			return db
 		}
-		return db.Where(map[string]interface{}(equal)).Scopes(d.undeleted())
+		return db.Where(map[string]interface{}(equal))
 	}
 }
 
@@ -46,7 +69,7 @@ func (d Dao) include(include Include) func(db *gorm.DB) *gorm.DB {
 		for key, where := range include {
 			db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
 		}
-		return db.Scopes(d.undeleted())
+		return db
 	}
 }
 
@@ -58,34 +81,20 @@ func (d Dao) Include(ctx context.Context, include Include) *gorm.DB {
 	return d.DB(ctx).Scopes(d.include(include))
 }
 
-func (d Dao) Transaction(ctx context.Context, fn func(tx *gorm.DB) (err error)) (err error) {
-	tx := d.DB(ctx).Begin()
-	defer func() {
-		if err != nil {
-			if e := tx.Rollback().Error; e != nil {
-				err = fmt.Errorf("transaction error: %w, rollback error: %s", err, e)
-			}
-		} else {
-			err = tx.Commit().Error
-		}
-	}()
-	return fn(tx)
-}
-
-func (d Dao) Count(ctx context.Context, equal Equal) (count int, err error) {
+func (d Dao) Count(ctx context.Context, equal Equal) (count int64, err error) {
 	if err = d.Equal(ctx, equal).Count(&count).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (d Dao) List(ctx context.Context, query Query, form url.Values, include Include, out interface{}) (total int, err error) {
-	if err = d.Transaction(ctx, func(tx *gorm.DB) (err error) {
-		if err = tx.Scopes(ByQuery(d.Model, form), d.include(include)).Count(&total).Error; err != nil {
+func (d Dao) List(ctx context.Context, query Query, include Include, out interface{}) (total int64, err error) {
+	if err = d.DB(ctx).Transaction(func(tx *gorm.DB) (err error) {
+		if err = tx.Scopes(query.ByQuery, d.include(include)).Count(&total).Error; err != nil {
 			return
 		}
 
-		if err = tx.Scopes(query.ByQuery(d.Model), ByQuery(d.Model, form), d.include(include)).Find(&out).Error; err != nil {
+		if err = tx.Scopes(query.ByQuery, d.include(include)).Find(&out).Error; err != nil {
 			return
 		}
 
@@ -111,14 +120,17 @@ func (d Dao) Find(ctx context.Context, out interface{}, equal Equal) (err error)
 }
 
 func (d Dao) Create(ctx context.Context, equal Equal, value interface{}) (err error) {
-	return d.Transaction(ctx, func(tx *gorm.DB) (err error) {
-		var count int
-		if count, err = d.Count(ctx, equal); err != nil {
-			return
-		}
+	return d.DB(ctx).Transaction(func(tx *gorm.DB) (err error) {
+		if len(equal) > 0 {
+			var count int64
 
-		if count > 0 {
-			return errors.New("record already exists")
+			if err = tx.Scopes(d.equal(equal)).Count(&count).Error; err != nil {
+				return
+			}
+
+			if count > 0 {
+				return errors.New("record already exists")
+			}
 		}
 
 		return tx.Create(value).Error
@@ -126,7 +138,7 @@ func (d Dao) Create(ctx context.Context, equal Equal, value interface{}) (err er
 }
 
 func (d Dao) Update(ctx context.Context, equal Equal, update Update) (err error) {
-	return d.Equal(ctx, equal).Update(update).Error
+	return d.Equal(ctx, equal).Updates(map[string]interface{}(update)).Error
 }
 
 func (d Dao) Delete(ctx context.Context, equal Equal) (err error) {
@@ -135,55 +147,9 @@ func (d Dao) Delete(ctx context.Context, equal Equal) (err error) {
 	})
 }
 
-func NewDao(db func(ctx context.Context) *gorm.DB, model interface{}, table string) Dao {
+func NewDao(db func(ctx context.Context) *gorm.DB, model schema.Tabler) Dao {
 	return Dao{
 		db:    db,
-		Model: model,
-		Table: table,
-	}
-}
-
-func ByQuery(model interface{}, form url.Values) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		scope := db.NewScope(model)
-		for key, val := range form {
-			if OmitParam(key) || len(val) == 0 {
-				continue
-			}
-
-			var hasValue bool // db中有该字段
-			if field, ok := scope.FieldByName(key); ok && !field.IsIgnored && len(val) > 0 {
-				hasValue = true
-			}
-
-			var op byte // 模糊匹配操作符 (等值匹配, ^前缀匹配, $后缀匹配)
-			if len(val) == 1 {
-				if len(val[0]) > 1 {
-					switch o := val[0][0]; o {
-					case '\\', '^', '$', '*':
-						op = o
-						val = []string{val[0][1:]}
-					}
-				}
-				if len(val[0]) == 0 {
-					continue
-				}
-			}
-
-			if hasValue {
-				switch op {
-				case '^': // 前缀匹配
-					db = db.Where(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%s%%", val[0]))
-				case '$': // 后缀匹配
-					db = db.Where(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%%%s", val[0]))
-				case '*': // 模糊匹配
-					db = db.Where(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%%%s%%", val[0]))
-				default: // 等值匹配 (没有操作符或是数组全部是等值匹配)
-					db = db.Where(fmt.Sprintf("`%s` IN (?)", key), val)
-				}
-			}
-		}
-
-		return db
+		model: model,
 	}
 }

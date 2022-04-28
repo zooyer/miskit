@@ -191,7 +191,7 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 		retry int
 		req   *http.Request
 		resp  *http.Response
-		child = trace.Get(ctx).Child()
+		child = trace.Get(ctx).GenChild()
 	)
 
 	defer func() {
@@ -275,7 +275,7 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 
 	// 设置trace
 	if child != nil {
-		child.Set(req.Header, child.Caller)
+		child.SetHeader(req.Header)
 	}
 
 	// 请求重试

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/zooyer/miskit/metric"
 )
 
 type Error struct {
@@ -24,7 +26,7 @@ const (
 
 var mutex sync.Mutex
 
-var prefix string
+var prefix = "miskit"
 
 var msg = map[int]string{
 	Success:        "ok",
@@ -57,8 +59,11 @@ func (e Error) Metric() {
 		return
 	}
 	e.metric = true
-	// TODO metric
-	fmt.Println("METRIC:", prefix, "errno:", e.errno)
+
+	metric.Count("errors::"+prefix, 1, map[string]interface{}{
+		"errno":   e.errno,
+		"message": e.message,
+	})
 }
 
 func (e Error) Record(ctx context.Context) Error {
@@ -67,7 +72,7 @@ func (e Error) Record(ctx context.Context) Error {
 	}
 	e.record = true
 	// TODO LOG
-	fmt.Println("LOG:", e)
+	fmt.Println("LOG::errors:", e)
 	return e
 }
 
