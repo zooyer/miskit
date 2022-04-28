@@ -4,6 +4,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 func OpenDB(name, dsn string, config interface{}) (*gorm.DB, error) {
@@ -20,5 +21,9 @@ func OpenDB(name, dsn string, config interface{}) (*gorm.DB, error) {
 		}
 	}
 
-	return gorm.Open(dial)
+	return gorm.Open(dial, &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+	})
 }
