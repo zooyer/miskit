@@ -80,6 +80,7 @@ func TestController_Bind(t *testing.T) {
 	var tests = []struct {
 		Input Student
 		Equal bool
+		Code int
 	}{
 		{
 			Input: Student{
@@ -88,6 +89,7 @@ func TestController_Bind(t *testing.T) {
 				Phone: "",
 			},
 			Equal: false,
+			Code: http.StatusInternalServerError,
 		},
 		{
 			Input: Student{
@@ -96,6 +98,7 @@ func TestController_Bind(t *testing.T) {
 				Phone: "",
 			},
 			Equal: false,
+			Code: http.StatusInternalServerError,
 		},
 		{
 			Input: Student{
@@ -104,6 +107,7 @@ func TestController_Bind(t *testing.T) {
 				Phone: "999",
 			},
 			Equal: true,
+			Code: http.StatusOK,
 		},
 		{
 			Input: Student{
@@ -112,6 +116,7 @@ func TestController_Bind(t *testing.T) {
 				Phone: "111",
 			},
 			Equal: true,
+			Code: http.StatusOK,
 		},
 	}
 
@@ -121,11 +126,11 @@ func TestController_Bind(t *testing.T) {
 	for _, test := range tests {
 		resp = postJson(engine, "/valid", test.Input)
 		data, _ = ioutil.ReadAll(resp.Body)
-		assert.Equal(t, http.StatusOK, resp.Code)
+		assert.Equal(t, test.Code, resp.Code)
 		if test.Equal {
-			assert.Equal(t, "0", jsons.Raw(data).Number("code").JSONString())
+			assert.Equal(t, "0", jsons.Raw(data).Number("errno").JSONString())
 		} else {
-			assert.NotEqual(t, "0", jsons.Raw(data).Number("code").JSONString())
+			assert.NotEqual(t, "0", jsons.Raw(data).Number("errno").JSONString())
 		}
 		t.Log(string(data))
 	}
