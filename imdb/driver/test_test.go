@@ -2,18 +2,13 @@ package driver
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/zooyer/miskit/imdb"
-	"github.com/zooyer/miskit/imdb/driver/buntdb"
-	"github.com/zooyer/miskit/imdb/driver/redis"
-)
-
-var (
-	_ redis.RedisDriver
-	_ buntdb.Driver
+	_ "github.com/zooyer/miskit/imdb/driver/buntdb"
+	_ "github.com/zooyer/miskit/imdb/driver/redis"
 )
 
 func TestOpen(t *testing.T) {

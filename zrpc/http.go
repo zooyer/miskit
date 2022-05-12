@@ -6,16 +6,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/zooyer/miskit/metric"
 	"io"
 	"io/ioutil"
+	"mime"
 	"net"
 	"net/http"
+	url2 "net/url"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/zooyer/miskit/log"
+	"github.com/zooyer/miskit/metric"
 	"github.com/zooyer/miskit/trace"
 )
 
@@ -33,25 +35,30 @@ type Client struct {
 type Request http.Request
 
 type Response struct {
-	Code    int             `json:"code"`
+	Errno   int             `json:"errno"`
 	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data"`
+	Data    json.RawMessage `json:"data,omitempty"`
 }
 
 // HTTP请求选项
 type Option func(ctx context.Context, req *Request)
 
 // 请求表单(适用于GET参数、POST表单等)
-func NewForm(v interface{}) map[string]interface{} {
-	var m = make(map[string]interface{})
+func NewForm(v interface{}) url2.Values {
+	var values = make(url2.Values)
 	switch val := v.(type) {
-	case map[string]interface{}:
+	case url2.Values:
 		return val
+	case map[string]interface{}:
+		for k, v := range val {
+			values.Set(k, fmt.Sprint(v))
+		}
+		return values
 	case map[string]string:
 		for k, v := range val {
-			m[k] = v
+			values.Set(k, v)
 		}
-		return m
+		return values
 	}
 
 	val := reflect.ValueOf(v)
@@ -62,8 +69,11 @@ func NewForm(v interface{}) map[string]interface{} {
 	switch val.Kind() {
 	case reflect.Map:
 		for it := val.MapRange(); it.Next(); {
-			m[fmt.Sprint(it.Key().Interface())] = fmt.Sprint(it.Value().Interface())
+			key := fmt.Sprint(it.Key().Interface())
+			val := fmt.Sprint(it.Value().Interface())
+			values.Set(key, val)
 		}
+		return values
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i++ {
 			var field = val.Field(i)
@@ -72,12 +82,12 @@ func NewForm(v interface{}) map[string]interface{} {
 				if name == "" || name == "-" {
 					name = val.Type().Field(i).Name
 				}
-				m[name] = field.Interface()
+				values.Set(name, fmt.Sprint(field.Interface()))
 			}
 		}
 	}
 
-	return m
+	return values
 }
 
 // 创建HTTP客户端
@@ -116,7 +126,7 @@ func New(name string, retry int, timeout time.Duration, logger *log.Logger, opts
 }
 
 // GET请求
-func (c *Client) Get(ctx context.Context, url string, params map[string]interface{}, response interface{}, opts ...Option) (data []byte, code int, err error) {
+func (c *Client) Get(ctx context.Context, url string, params url2.Values, response interface{}, opts ...Option) (data []byte, code int, err error) {
 	return c.do(ctx, "GET", "", url, params, response, opts...)
 }
 
@@ -126,8 +136,8 @@ func (c *Client) post(ctx context.Context, url, contentType string, request, res
 }
 
 // POST表单请求
-func (c *Client) PostForm(ctx context.Context, url string, params map[string]interface{}, response interface{}, opts ...Option) (data []byte, code int, err error) {
-	return c.post(ctx, url, "application/x-www-form-urlencoded", params, response, opts...)
+func (c *Client) PostForm(ctx context.Context, url string, values url2.Values, response interface{}, opts ...Option) (data []byte, code int, err error) {
+	return c.post(ctx, url, "application/x-www-form-urlencoded", values, response, opts...)
 }
 
 // POST JSON请求
@@ -140,13 +150,33 @@ func (c *Client) newRequest(ctx context.Context, method, contentType, url string
 	var body io.Reader
 
 	if method != "GET" {
-		switch contentType {
+		content, _, _ := mime.ParseMediaType(contentType)
+		switch content {
 		case "application/json":
 			data, err := json.Marshal(request)
 			if err != nil {
 				return nil, err
 			}
 			body = bytes.NewReader(data)
+		case "application/x-www-form-urlencoded":
+			switch form := request.(type) {
+			case url2.Values:
+				body = strings.NewReader(form.Encode())
+			case map[string]string:
+				var values = make(url2.Values)
+				for key, val := range form {
+					values.Set(key, val)
+				}
+				body = strings.NewReader(values.Encode())
+			case map[string]interface{}:
+				var values = make(url2.Values)
+				for key, val := range form {
+					values.Set(key, fmt.Sprint(val))
+				}
+				body = strings.NewReader(values.Encode())
+			default:
+				return nil, errors.New("not support content type and request type:" + contentType)
+			}
 		default:
 			return nil, errors.New("not support content type:" + contentType)
 		}
@@ -165,15 +195,27 @@ func (c *Client) newRequest(ctx context.Context, method, contentType, url string
 	}
 
 	if method == "GET" && request != nil {
-		params, ok := request.(map[string]interface{})
-		if !ok {
-			return nil, errors.New("request must is map[string]interface{} type")
+		var query = req.URL.Query()
+		switch form := request.(type) {
+		case url2.Values:
+			for key, values := range form {
+				for _, val := range values {
+					query.Add(key, val)
+				}
+			}
+		case map[string]string:
+			for key, val := range form {
+				query.Add(key, val)
+			}
+		case map[string]interface{}:
+			for key, val := range form {
+				query.Add(key, fmt.Sprint(val))
+			}
+		default:
+			return nil, errors.New("not support request type")
 		}
-		var form = req.URL.Query()
-		for key, val := range params {
-			form.Set(key, fmt.Sprint(val))
-		}
-		req.URL.RawQuery = form.Encode()
+
+		req.URL.RawQuery = query.Encode()
 	}
 
 	return
@@ -305,18 +347,18 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 		// 解析body
 		var res Response
 		if err = json.Unmarshal(body, &res); err != nil {
-			return
+			return body, code, err
 		}
 
-		// 断言业务层code
-		if code = res.Code; code != 0 {
-			return nil, code, fmt.Errorf("%s: http resonse code:%d, message:%s", c.name, res.Code, res.Message)
+		// 断言业务层errno
+		if errno := res.Errno; errno != 0 {
+			return body, code, fmt.Errorf("%s: http resonse code:%d, message:%s", c.name, code, res.Message)
 		}
 
 		if err = json.Unmarshal(res.Data, response); err != nil {
-			return
+			return body, code, err
 		}
 	}
 
-	return body, resp.StatusCode, nil
+	return body, code, nil
 }

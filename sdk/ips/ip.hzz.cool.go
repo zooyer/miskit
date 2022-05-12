@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/zooyer/miskit/log"
 	"github.com/zooyer/miskit/zrpc"
+	url2 "net/url"
 	"time"
 )
 
@@ -46,8 +47,8 @@ func (c *Client) QueryIP(ctx context.Context, ip string) (_ *IP, err error) {
 		Data IP     `json:"data"`
 	}
 
-	var req = map[string]interface{}{
-		"ip": ip,
+	var req = url2.Values{
+		"ip": {ip},
 	}
 
 	data, _, err := c.client.Get(ctx, c.url, req, nil)
