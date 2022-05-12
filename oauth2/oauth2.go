@@ -152,6 +152,30 @@ func (defaultParameter) ClientCredentialsParams(ctx context.Context, config Conf
 	return values
 }
 
+// genState 生成随机state
+func (c Config) genState(ctx context.Context) string {
+	id := uuid.NewMD5(uuid.New(), []byte(c.ClientID)).String()
+	return strings.ReplaceAll(id, "-", "")
+}
+
+// AuthCodeURL 获取授权码URL地址
+func (c Config) AuthCodeURL(ctx context.Context) (state string, url string) {
+	var buf bytes.Buffer
+	buf.WriteString(c.Endpoint.AuthorizeURL)
+
+	if strings.Contains(c.Endpoint.AuthorizeURL, "?") {
+		buf.WriteByte('&')
+	} else {
+		buf.WriteByte('?')
+	}
+
+	state = c.genState(ctx)
+	params := c.Parameter.AuthCodeParams(ctx, c, state)
+	buf.WriteString(params)
+
+	return state, buf.String()
+}
+
 // NewClient 场景OAuth2客户端
 func NewClient(rpc *zrpc.Client, config Config) *Client {
 	if config.Parameter == nil {
@@ -168,12 +192,6 @@ func NewClient(rpc *zrpc.Client, config Config) *Client {
 	}
 
 	return &client
-}
-
-// genState 生成随机state
-func (c *Client) genState(ctx context.Context) string {
-	id := uuid.NewMD5(uuid.New(), []byte(c.config.ClientID)).String()
-	return strings.ReplaceAll(id, "-", "")
 }
 
 // doRequest 请求OAuth2服务
@@ -213,20 +231,7 @@ func (c *Client) doRequest(ctx context.Context, url string, params map[string]st
 
 // AuthCodeURL 获取授权码URL地址
 func (c *Client) AuthCodeURL(ctx context.Context) (state string, url string) {
-	var buf bytes.Buffer
-	buf.WriteString(c.config.Endpoint.AuthorizeURL)
-
-	if strings.Contains(c.config.Endpoint.AuthorizeURL, "?") {
-		buf.WriteByte('&')
-	} else {
-		buf.WriteByte('?')
-	}
-
-	state = c.genState(ctx)
-	params := c.config.Parameter.AuthCodeParams(ctx, c.config, state)
-	buf.WriteString(params)
-
-	return state, buf.String()
+	return c.config.AuthCodeURL(ctx)
 }
 
 // AuthorizationCodeToken 授权码方式获取Token
