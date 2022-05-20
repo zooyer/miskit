@@ -1,4 +1,4 @@
-package webefs
+package webfs
 
 import (
 	"embed"
