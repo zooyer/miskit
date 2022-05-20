@@ -75,6 +75,12 @@ func (c Controller) Bind(ctx *gin.Context, v interface{}) (err error) {
 }
 
 func (c Controller) Response(ctx *gin.Context, data interface{}, err error) {
+	if e := recover(); e != nil {
+		if err == nil {
+			err = errors.New(errors.ServicePanic, fmt.Errorf("%s", e))
+		}
+	}
+
 	if err != nil {
 		errno := errors.New(errors.UnknownError, err)
 		errno.Record(ctx).Metric()
