@@ -94,7 +94,7 @@ func (d Dao) List(ctx context.Context, query Query, include Include, out interfa
 			return
 		}
 
-		if err = tx.Scopes(query.ByQuery, d.include(include)).Find(&out).Error; err != nil {
+		if err = tx.Scopes(query.ByQuery, d.include(include)).Find(out).Error; err != nil {
 			return
 		}
 
