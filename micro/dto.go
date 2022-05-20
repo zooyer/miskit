@@ -24,7 +24,7 @@ type Query struct {
 type Result struct {
 	Query
 	Count int         `json:"count"`
-	Total int         `json:"total"`
+	Total int64       `json:"total"`
 	Data  interface{} `json:"data"`
 }
 
