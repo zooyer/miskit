@@ -3,6 +3,7 @@ package micro
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -56,6 +57,14 @@ func NewResponse(data interface{}, err error) (resp Response) {
 	}
 
 	resp.Message = errors.Msg(resp.Errno)
+
+	return
+}
+
+func (c Controller) ParamInt(ctx *gin.Context, key string) (i int64, err error) {
+	if i, err = strconv.ParseInt(ctx.Param(key), 10, 64); err != nil {
+		return 0, errors.New(errors.InvalidRequest, err)
+	}
 
 	return
 }
