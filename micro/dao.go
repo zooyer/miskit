@@ -90,7 +90,7 @@ func (d Dao) Count(ctx context.Context, equal Equal) (count int64, err error) {
 
 func (d Dao) List(ctx context.Context, query Query, include Include, out interface{}) (total int64, err error) {
 	if err = d.DB(ctx).Transaction(func(tx *gorm.DB) (err error) {
-		if err = tx.Scopes(query.ByQuery, d.include(include)).Count(&total).Error; err != nil {
+		if err = tx.Scopes(query.ByWhere, query.BySort, query.ByCustom, d.include(include)).Count(&total).Error; err != nil {
 			return
 		}
 
