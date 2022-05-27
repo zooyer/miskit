@@ -3,7 +3,6 @@ package micro
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -32,8 +31,6 @@ type Dao struct {
 type Equal map[string]interface{}
 
 type Update map[string]interface{}
-
-type Include map[string][]interface{}
 
 func (d Dao) DB(ctx context.Context) *gorm.DB {
 	var db = d.db(ctx).Model(d.model)
@@ -64,21 +61,8 @@ func (d Dao) equal(equal Equal) func(db *gorm.DB) *gorm.DB {
 	}
 }
 
-func (d Dao) include(include Include) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		for key, where := range include {
-			db = db.Where(fmt.Sprintf("%v IN (?)", key), where)
-		}
-		return db
-	}
-}
-
 func (d Dao) Equal(ctx context.Context, equal Equal) *gorm.DB {
 	return d.DB(ctx).Scopes(d.equal(equal))
-}
-
-func (d Dao) Include(ctx context.Context, include Include) *gorm.DB {
-	return d.DB(ctx).Scopes(d.include(include))
 }
 
 func (d Dao) Count(ctx context.Context, equal Equal) (count int64, err error) {
@@ -88,13 +72,13 @@ func (d Dao) Count(ctx context.Context, equal Equal) (count int64, err error) {
 	return
 }
 
-func (d Dao) List(ctx context.Context, query Query, include Include, out interface{}) (total int64, err error) {
+func (d Dao) List(ctx context.Context, query Query, equal Equal, out interface{}) (total int64, err error) {
 	if err = d.DB(ctx).Transaction(func(tx *gorm.DB) (err error) {
-		if err = tx.Scopes(query.ByWhere, query.BySort, query.ByCustom, d.include(include)).Count(&total).Error; err != nil {
+		if err = tx.Scopes(query.ByWhere, query.BySort, query.ByCustom, d.equal(equal)).Count(&total).Error; err != nil {
 			return
 		}
 
-		if err = tx.Scopes(query.ByQuery, d.include(include)).Find(out).Error; err != nil {
+		if err = tx.Scopes(query.ByQuery, d.equal(equal)).Find(out).Error; err != nil {
 			return
 		}
 
