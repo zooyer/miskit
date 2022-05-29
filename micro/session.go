@@ -26,7 +26,7 @@ type imdbStore struct {
 	*store
 }
 
-const defaultExpires = time.Minute * 20
+const defaultExpires = int64(20 * time.Minute / time.Second)
 
 func newStore(db imdb.Conn, prefix string, keyPairs ...[]byte) *store {
 	return &store{
@@ -35,7 +35,7 @@ func newStore(db imdb.Conn, prefix string, keyPairs ...[]byte) *store {
 		Codecs: securecookie.CodecsFromPairs(keyPairs...),
 		Options: &sessions.Options{
 			Path:   "/",
-			MaxAge: int(defaultExpires.Seconds()),
+			MaxAge: int(defaultExpires),
 		},
 	}
 }
@@ -122,7 +122,7 @@ func (s *store) save(ctx context.Context, session *sessions.Session) (err error)
 	}
 	var expires = defaultExpires
 	if session.Options.MaxAge > 0 {
-		expires = time.Second * time.Duration(session.Options.MaxAge)
+		expires = int64(session.Options.MaxAge)
 	}
 
 	if err = s.db.SetEx(ctx, s.prefix+session.ID, string(data), expires); err != nil {
