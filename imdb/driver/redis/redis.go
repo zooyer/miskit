@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/piaohao/godis"
+	"github.com/go-redis/redis"
 	"github.com/zooyer/miskit/imdb"
 )
 
 type redisConn struct {
-	rds *godis.Redis
+	rds *redis.Client
 }
 
 type redisDriver int
@@ -49,25 +49,22 @@ func (r redisDriver) parseDuration(str string) (duration time.Duration, err erro
 	return 0, fmt.Errorf("unknown time unit: %s", unit)
 }
 
-func (r redisDriver) parseArgs(args string) (opts *godis.Option, err error) {
-	var options = godis.Option{
-		Host:              "localhost",
-		Port:              6379,
-		ConnectionTimeout: time.Second * 5,
-		SoTimeout:         time.Second * 5,
-		Password:          "",
-		Db:                0,
+func (r redisDriver) parseArgs(args string) (opts *redis.Options, err error) {
+	var options = redis.Options{
+		Addr:         "localhost",
+		ReadTimeout:  time.Second * 5,
+		WriteTimeout: time.Second * 5,
 	}
 
 	var fields = strings.SplitN(args, "?", 2)
 
-	var endpoint = strings.Split(fields[0], ":")
+	var endpoint = strings.Split(fields[0], "/")
 	if len(endpoint) > 0 && endpoint[0] != "" {
-		options.Host = endpoint[0]
-	}
-	if len(endpoint) > 1 && endpoint[1] != "" {
-		if options.Port, err = strconv.Atoi(endpoint[1]); err != nil {
-			return nil, fmt.Errorf("port failed, %w", err)
+		options.Addr = endpoint[0]
+		if len(endpoint) > 1 && endpoint[1] != "" {
+			if options.DB, err = strconv.Atoi(endpoint[1]); err != nil {
+				return
+			}
 		}
 	}
 
@@ -86,16 +83,20 @@ func (r redisDriver) parseArgs(args string) (opts *godis.Option, err error) {
 			switch kv[0] {
 			case "password", "Password":
 				options.Password = kv[1]
-			case "db", "Db", "DB":
-				if options.Db, err = strconv.Atoi(kv[1]); err != nil {
-					return nil, fmt.Errorf("args error, %w", err)
-				}
-			case "so_timeout", "soTimeout", "SoTimeout":
-				if options.SoTimeout, err = r.parseDuration(kv[1]); err != nil {
+			case "dial_timeout", "dialTimeout", "DialTimeout":
+				if options.DialTimeout, err = r.parseDuration(kv[1]); err != nil {
 					return
 				}
-			case "conn_timeout", "connection_timeout", "connTimeout", "connectionTimeout", "ConnTimeout", "ConnectionTimeout":
-				if options.ConnectionTimeout, err = r.parseDuration(kv[1]); err != nil {
+			case "read_timeout", "readTimeout", "ReadTimeout":
+				if options.ReadTimeout, err = r.parseDuration(kv[1]); err != nil {
+					return
+				}
+			case "write_timeout", "writeTimeout", "WriteTimeout":
+				if options.WriteTimeout, err = r.parseDuration(kv[1]); err != nil {
+					return
+				}
+			case "pool_size", "poolSize", "PoolSize":
+				if options.PoolSize, err = strconv.Atoi(kv[1]); err != nil {
 					return
 				}
 			}
@@ -113,8 +114,9 @@ func (r redisDriver) Open(args string) (conn imdb.Conn, err error) {
 		return
 	}
 
-	c.rds = godis.NewRedis(opts)
-	if _, err = c.rds.Ping(); err != nil {
+	c.rds = redis.NewClient(opts)
+
+	if _, err = c.rds.Ping().Result(); err != nil {
 		return
 	}
 
@@ -122,11 +124,17 @@ func (r redisDriver) Open(args string) (conn imdb.Conn, err error) {
 }
 
 func (c redisConn) Get(ctx context.Context, key string) (value string, err error) {
-	return c.rds.Get(key)
+	if value, err = c.rds.Get(key).Result(); err != nil {
+		if err == redis.Nil {
+			err = nil
+		}
+	}
+
+	return
 }
 
 func (c redisConn) Set(ctx context.Context, key, value string) (err error) {
-	if _, err = c.rds.Set(key, value); err != nil {
+	if _, err = c.rds.Set(key, value, 0).Result(); err != nil {
 		return
 	}
 
@@ -134,7 +142,7 @@ func (c redisConn) Set(ctx context.Context, key, value string) (err error) {
 }
 
 func (c redisConn) SetEx(ctx context.Context, key, value string, seconds int64) (err error) {
-	if _, err = c.rds.SetEx(key, int(seconds), value); err != nil {
+	if _, err = c.rds.Set(key, value, time.Second*time.Duration(seconds)).Result(); err != nil {
 		return
 	}
 
@@ -142,15 +150,20 @@ func (c redisConn) SetEx(ctx context.Context, key, value string, seconds int64) 
 }
 
 func (c redisConn) Del(ctx context.Context, key string) (err error) {
-	if _, err = c.rds.Del(key); err != nil {
+	if _, err = c.rds.Del(key).Result(); err != nil {
 		return
 	}
 
 	return
 }
 
-func (c redisConn) TTL(ctx context.Context, key string) (ttl int64, err error) {
-	return c.rds.TTL(key)
+func (c redisConn) TTL(ctx context.Context, key string) (seconds int64, err error) {
+	ttl, err := c.rds.TTL(key).Result()
+	if err != nil {
+		return
+	}
+
+	return int64(ttl.Seconds()), nil
 }
 
 func init() {
