@@ -133,8 +133,8 @@ func (c redisConn) Set(ctx context.Context, key, value string) (err error) {
 	return
 }
 
-func (c redisConn) SetEx(ctx context.Context, key, value string, ttl time.Duration) (err error) {
-	if _, err = c.rds.SetEx(key, int(ttl.Seconds()), value); err != nil {
+func (c redisConn) SetEx(ctx context.Context, key, value string, seconds int64) (err error) {
+	if _, err = c.rds.SetEx(key, int(seconds), value); err != nil {
 		return
 	}
 
@@ -147,6 +147,10 @@ func (c redisConn) Del(ctx context.Context, key string) (err error) {
 	}
 
 	return
+}
+
+func (c redisConn) TTL(ctx context.Context, key string) (ttl int64, err error) {
+	return c.rds.TTL(key)
 }
 
 func init() {

@@ -32,38 +32,54 @@ func TestOpen(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		const key = "name"
 		var ctx = context.Background()
 
-		if err = conn.Set(ctx, "name", "张三"); err != nil {
+		if err = conn.Set(ctx, key, "张三"); err != nil {
 			t.Fatal(err)
 		}
-		value, err := conn.Get(ctx, "name")
+		value, err := conn.Get(ctx, key)
 		if err != nil {
 			t.Fatal(err)
 		}
 		assert.Equal(t, "张三", value)
 
-		if err = conn.SetEx(ctx, "name", "李四", time.Second); err != nil {
+		if err = conn.SetEx(ctx, key, "李四", 1); err != nil {
 			t.Fatal(err)
 		}
-		if value, err = conn.Get(ctx, "name"); err != nil {
+		if value, err = conn.Get(ctx, key); err != nil {
 			t.Fatal(err)
 		}
 		assert.Equal(t, "李四", value)
 
 		time.Sleep(time.Second)
 
-		if value, err = conn.Get(ctx, "name"); err != nil {
+		if value, err = conn.Get(ctx, key); err != nil {
 			t.Fatal(err)
 		}
 		assert.Equal(t, "", value)
 
-		if err = conn.Del(ctx, "name"); err != nil {
+		if err = conn.Del(ctx, key); err != nil {
 			t.Fatal(err)
 		}
 
-		if err = conn.Del(ctx, "name"); err != nil {
+		if err = conn.Del(ctx, key); err != nil {
 			t.Fatal(err)
 		}
+
+		seconds, err := conn.TTL(ctx, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, int64(-2), seconds)
+
+		if err = conn.SetEx(ctx, key, "ttl", 1); err != nil {
+			t.Fatal(err)
+		}
+
+		if seconds, err = conn.TTL(ctx, key); err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, int64(1), seconds)
 	}
 }

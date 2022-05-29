@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 )
 
 var (
@@ -15,8 +14,9 @@ var (
 type Conn interface {
 	Get(ctx context.Context, key string) (value string, err error)
 	Set(ctx context.Context, key, value string) (err error)
-	SetEx(ctx context.Context, key, value string, ttl time.Duration) (err error)
+	SetEx(ctx context.Context, key, value string, seconds int64) (err error)
 	Del(ctx context.Context, key string) (err error)
+	TTL(ctx context.Context, key string) (seconds int64, err error)
 }
 
 type Driver interface {
