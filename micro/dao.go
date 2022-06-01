@@ -3,10 +3,9 @@ package micro
 import (
 	"context"
 	"errors"
-	"time"
-
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
+	"time"
 )
 
 type Model struct {
@@ -125,10 +124,21 @@ func (d Dao) Update(ctx context.Context, equal Equal, update Update) (err error)
 	return d.Equal(ctx, equal).Updates(map[string]interface{}(update)).Error
 }
 
-func (d Dao) Delete(ctx context.Context, equal Equal) (err error) {
-	return d.Update(ctx, equal, Update{
-		"deleted_at": time.Now(),
-	})
+func (d Dao) Delete(ctx context.Context, equal Equal, update Update) (err error) {
+	if v := update["updated_id"]; v != nil {
+		update["deleted_id"] = v
+	}
+	if v := update["updated_by"]; v != nil {
+		update["deleted_by"] = v
+	}
+	if v := update["updated_at"]; v != nil {
+		update["deleted_at"] = v
+	}
+	if update["deleted_at"] == nil {
+		update["deleted_at"] = time.Now().Unix()
+	}
+
+	return d.Update(ctx, equal, update)
 }
 
 func NewDao(db func(ctx context.Context) *gorm.DB, model schema.Tabler) Dao {
