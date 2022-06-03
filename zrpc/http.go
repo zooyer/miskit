@@ -332,14 +332,18 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 	}
 	defer resp.Body.Close()
 
-	// 断言HTTP响应
-	if code = resp.StatusCode; code != http.StatusOK {
-		return nil, code, fmt.Errorf("%s: http response code:%d, status:%s", c.name, resp.StatusCode, resp.Status)
-	}
-
 	// 读取响应
 	if body, err = ioutil.ReadAll(resp.Body); err != nil {
 		return
+	}
+
+	// 断言HTTP响应
+	if code = resp.StatusCode; code != http.StatusOK {
+		var res Response
+		if err = json.Unmarshal(body, &resp); err == nil && res.Errno != 0 {
+			return body, code, fmt.Errorf("%s: http resonse code:%d, errno:%d, message:%s", c.name, code, res.Errno, res.Message)
+		}
+		return body, code, fmt.Errorf("%s: http response code:%d, status:%s", c.name, resp.StatusCode, resp.Status)
 	}
 
 	// 解析业务层响应
@@ -352,7 +356,7 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 
 		// 断言业务层errno
 		if errno := res.Errno; errno != 0 {
-			return body, code, fmt.Errorf("%s: http resonse code:%d, message:%s", c.name, code, res.Message)
+			return body, code, fmt.Errorf("%s: http resonse code:%d, errno:%d, message:%s", c.name, code, res.Errno, res.Message)
 		}
 
 		if err = json.Unmarshal(res.Data, response); err != nil {

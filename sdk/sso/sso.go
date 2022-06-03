@@ -240,7 +240,7 @@ func (c *Client) newSession(ctx *gin.Context, code string) (session *sessionResp
 }
 
 type sessionOptions struct {
-	RedirectFunc func(ctx *gin.Context, uri string, err error)
+	RedirectFunc func(ctx *gin.Context, uri string, err error) // 默认302重定向到登录页
 	CallbackFunc func(ctx *gin.Context, userinfo *Userinfo, err error)
 }
 
