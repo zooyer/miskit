@@ -3,6 +3,7 @@ package sso
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -233,12 +234,26 @@ func (c *Client) newSession(ctx *gin.Context, code string) (session *sessionResp
 	return &resp, nil
 }
 
-type SessionOptions struct {
+type sessionOptions struct {
 	RedirectFunc func(ctx *gin.Context, uri string, err error)
 	CallbackFunc func(ctx *gin.Context, userinfo *Userinfo, err error)
 }
 
-func (c *Client) callback(options SessionOptions) gin.HandlerFunc {
+type SessionOption func(options *sessionOptions)
+
+func WithRedirect(redirect func(ctx *gin.Context, uri string, err error)) SessionOption {
+	return func(options *sessionOptions) {
+		options.RedirectFunc = redirect
+	}
+}
+
+func WithCallback(callback func(ctx *gin.Context, userinfo *Userinfo, err error)) SessionOption {
+	return func(options *sessionOptions) {
+		options.CallbackFunc = callback
+	}
+}
+
+func (c *Client) oauth(options sessionOptions) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var (
 			err error
@@ -249,7 +264,11 @@ func (c *Client) callback(options SessionOptions) gin.HandlerFunc {
 			userinfo *Userinfo
 		)
 
-		defer func() { options.CallbackFunc(ctx, userinfo, err) }()
+		defer func() {
+			if options.CallbackFunc != nil {
+				options.CallbackFunc(ctx, userinfo, err)
+			}
+		}()
 
 		if err = ctx.Bind(&req); err != nil {
 			return
@@ -267,14 +286,22 @@ func (c *Client) callback(options SessionOptions) gin.HandlerFunc {
 	}
 }
 
-func (c *Client) middleware(options SessionOptions) gin.HandlerFunc {
+func (c *Client) middleware(loginPath string, options sessionOptions) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var (
 			err    error
 			cookie string
 		)
 
-		defer func() { options.RedirectFunc(ctx, c.AuthorizeCodeURL(ctx), err) }()
+		defer func() {
+			if err != nil {
+				if options.RedirectFunc != nil {
+					options.RedirectFunc(ctx, loginPath, err)
+				} else {
+					ctx.Redirect(http.StatusFound, loginPath)
+				}
+			}
+		}()
 
 		if cookie, err = ctx.Cookie(c.cookieName()); err != nil {
 			return
@@ -293,8 +320,41 @@ func (c *Client) middleware(options SessionOptions) gin.HandlerFunc {
 	}
 }
 
-func (c *Client) Session(options SessionOptions) (middleware, callback gin.HandlerFunc) {
-	return c.middleware(options), c.callback(options)
+func (c *Client) login() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var authCodeURL = c.AuthorizeCodeURL(ctx)
+		uri, err := url.Parse(authCodeURL)
+		if err != nil {
+			ctx.Redirect(http.StatusFound, authCodeURL)
+			return
+		}
+
+		var query = uri.Query()
+		for key, values := range ctx.Request.URL.Query() {
+			for _, value := range values {
+				query.Set(key, value)
+			}
+		}
+
+		uri.RawQuery = query.Encode()
+		uri.Fragment = ctx.Request.URL.Fragment
+
+		ctx.Redirect(http.StatusFound, uri.String())
+	}
+}
+
+func (c *Client) Session(router gin.IRouter, loginPath, oauthPath string, options ...SessionOption) (middleware gin.HandlerFunc) {
+	var opt sessionOptions
+	for _, fn := range options {
+		fn(&opt)
+	}
+
+	router.GET(loginPath, c.login())
+	router.HEAD(loginPath, c.login())
+	router.GET(oauthPath, c.oauth(opt))
+	router.POST(oauthPath, c.oauth(opt))
+
+	return c.middleware(loginPath, opt)
 }
 
 func (c *Client) SessionUserinfo(ctx context.Context) *Userinfo {

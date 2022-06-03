@@ -12,9 +12,9 @@ func TestSession(t *testing.T) {
 	engine := gin.Default()
 
 	var options = Option{
-		ClientID:     "5dbeab91e4904b7bae78b7e4408ceed7",
-		ClientSecret: "5f1766594bf8431d87a61c71f0f859e8",
-		Addr:         "http://localhost:8801",
+		ClientID:     "c51a92a640a04d26adcdb0f26c517487",
+		ClientSecret: "e0184070867e409e9b124b834475609d",
+		Addr:         "http://192.168.1.10:8881",
 		Retry:        2,
 		Timeout:      time.Second * 2,
 		Logger:       nil,
@@ -22,45 +22,12 @@ func TestSession(t *testing.T) {
 
 	client := New(options)
 
-	var sessionOptions = SessionOptions{
-		RedirectFunc: func(ctx *gin.Context, uri string, err error) {
-			if err == nil {
-				return
-			}
+	var redirect = WithRedirect(func(ctx *gin.Context, uri string, err error) {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, uri)
+	})
 
-			t.Logf(err.Error())
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"errno":   0,
-				"message": "success",
-				"data": gin.H{
-					"redirect": uri,
-				},
-			})
-		},
-		CallbackFunc: func(ctx *gin.Context, userinfo *Userinfo, err error) {
-			var (
-				errno   = 0
-				message = "success"
-			)
-			if err != nil {
-				errno = 999
-				message = err.Error()
-				t.Logf(err.Error())
-			}
-
-			ctx.JSON(http.StatusOK, gin.H{
-				"errno":   errno,
-				"message": message,
-				"data":    userinfo,
-			})
-		},
-	}
-
-	middleware, callback := client.Session(sessionOptions)
-	engine.GET("/oauth/callback", callback)
-	engine.Use(middleware)
-
-	engine.GET("/", func(ctx *gin.Context) {
+	session := client.Session(engine, "/login", "/oauth", redirect)
+	engine.GET("/", session, func(ctx *gin.Context) {
 		ctx.JSON(200, gin.H{
 			"errno":   0,
 			"message": "success",
