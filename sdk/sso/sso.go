@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -343,7 +344,7 @@ func (c *Client) login() gin.HandlerFunc {
 	}
 }
 
-func (c *Client) Session(router gin.IRouter, loginPath, oauthPath string, options ...SessionOption) (middleware gin.HandlerFunc) {
+func (c *Client) Session(router *gin.RouterGroup, loginPath, oauthPath string, options ...SessionOption) (middleware gin.HandlerFunc) {
 	var opt sessionOptions
 	for _, fn := range options {
 		fn(&opt)
@@ -354,7 +355,7 @@ func (c *Client) Session(router gin.IRouter, loginPath, oauthPath string, option
 	router.GET(oauthPath, c.oauth(opt))
 	router.POST(oauthPath, c.oauth(opt))
 
-	return c.middleware(loginPath, opt)
+	return c.middleware(path.Join(router.BasePath(), loginPath), opt)
 }
 
 func (c *Client) SessionUserinfo(ctx context.Context) *Userinfo {
