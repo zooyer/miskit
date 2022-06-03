@@ -340,7 +340,10 @@ func (c *Client) do(ctx context.Context, method, contentType, url string, reques
 	// 断言HTTP响应
 	if code = resp.StatusCode; code != http.StatusOK {
 		var res Response
-		if err = json.Unmarshal(body, &resp); err == nil && res.Errno != 0 {
+		if err = json.Unmarshal(body, &res); err == nil && res.Errno != 0 && res.Message != "" {
+			if res.Message != "" {
+				return body, code, errors.New(res.Message)
+			}
 			return body, code, fmt.Errorf("%s: http resonse code:%d, errno:%d, message:%s", c.name, code, res.Errno, res.Message)
 		}
 		return body, code, fmt.Errorf("%s: http response code:%d, status:%s", c.name, resp.StatusCode, resp.Status)
