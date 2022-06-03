@@ -27,7 +27,7 @@ func TestSession(t *testing.T) {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, uri)
 	})
 
-	session := client.Session(&engine.RouterGroup, "/login", "/oauth", redirect)
+	session := client.Session(engine, "/login", "/oauth", redirect)
 	engine.GET("/", session, func(ctx *gin.Context) {
 		ctx.JSON(200, gin.H{
 			"errno":   0,

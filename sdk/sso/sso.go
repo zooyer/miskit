@@ -68,6 +68,11 @@ type Userinfo struct {
 	UserExpiredAt int64  `json:"user_expired_at,omitempty"`
 }
 
+type Router interface {
+	gin.IRouter
+	BasePath() string
+}
+
 func New(option Option) *Client {
 	return &Client{
 		option: option,
@@ -344,7 +349,7 @@ func (c *Client) login() gin.HandlerFunc {
 	}
 }
 
-func (c *Client) Session(router *gin.RouterGroup, loginPath, oauthPath string, options ...SessionOption) (middleware gin.HandlerFunc) {
+func (c *Client) Session(router Router, loginPath, oauthPath string, options ...SessionOption) (middleware gin.HandlerFunc) {
 	var opt sessionOptions
 	for _, fn := range options {
 		fn(&opt)
