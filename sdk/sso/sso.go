@@ -299,6 +299,7 @@ func (c *Client) middleware(loginPath string, options sessionOptions) gin.Handle
 				} else {
 					ctx.Redirect(http.StatusFound, loginPath)
 				}
+				ctx.Abort()
 			}
 		}()
 
