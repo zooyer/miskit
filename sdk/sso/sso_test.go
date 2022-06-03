@@ -12,9 +12,10 @@ func TestSession(t *testing.T) {
 	engine := gin.Default()
 
 	var options = Option{
-		ClientID:     "c51a92a640a04d26adcdb0f26c517487",
-		ClientSecret: "e0184070867e409e9b124b834475609d",
-		Addr:         "http://192.168.1.10:8881",
+		ClientID:     "5dbeab91e4904b7bae78b7e4408ceed7",
+		ClientSecret: "5f1766594bf8431d87a61c71f0f859e8",
+		Scope:        []string{"userinfo", "session"},
+		Addr:         "http://127.0.0.1:8801",
 		Retry:        2,
 		Timeout:      time.Second * 2,
 		Logger:       nil,

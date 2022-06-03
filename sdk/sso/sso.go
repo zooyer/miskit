@@ -16,7 +16,6 @@ import (
 type Option struct {
 	ClientID     string
 	ClientSecret string
-	RedirectURI  string
 	Scope        []string
 	Addr         string
 	Retry        int
@@ -75,14 +74,14 @@ func New(option Option) *Client {
 	}
 }
 
-func (c *Client) AuthorizeCodeURL(ctx context.Context) string {
+func (c *Client) AuthorizeCodeURL(ctx context.Context, redirectURI string) string {
 	var params = url.Values{
 		"response_type": {"code"},
 		"client_id":     {c.option.ClientID},
 	}
 
-	if c.option.RedirectURI != "" {
-		params.Set("redirect_uri", c.option.RedirectURI)
+	if redirectURI != "" {
+		params.Set("redirect_uri", redirectURI)
 	}
 
 	if len(c.option.Scope) > 0 {
@@ -322,7 +321,7 @@ func (c *Client) middleware(loginPath string, options sessionOptions) gin.Handle
 
 func (c *Client) login() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var authCodeURL = c.AuthorizeCodeURL(ctx)
+		var authCodeURL = c.AuthorizeCodeURL(ctx, ctx.Query("redirect_uri"))
 		uri, err := url.Parse(authCodeURL)
 		if err != nil {
 			ctx.Redirect(http.StatusFound, authCodeURL)
