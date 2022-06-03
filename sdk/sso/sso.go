@@ -350,7 +350,7 @@ func (c *Client) middleware(loginPath string, options sessionOptions) gin.Handle
 			return
 		}
 
-		ctx.Set(c.contextKey(), &session.Userinfo)
+		ctx.Set(c.contextKey(), session.Userinfo)
 
 		if session.Cookie != nil {
 			c.setCookie(ctx, session.Cookie)
