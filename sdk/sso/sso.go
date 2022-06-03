@@ -292,7 +292,7 @@ func (c *Client) userinfo(ctx *gin.Context, userinfo *Userinfo) *Userinfo {
 	}
 
 	if userinfo.UserAvatar != "" {
-		userinfo.UserAvatar = fmt.Sprintf("%v/%v", c.option.Addr, userinfo.UserAvatar)
+		userinfo.UserAvatar = fmt.Sprintf("%s%s", c.option.Addr, userinfo.UserAvatar)
 	}
 
 	return userinfo
