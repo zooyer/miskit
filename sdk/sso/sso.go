@@ -39,8 +39,8 @@ type cookie struct {
 }
 
 type sessionResp struct {
-	Cookie   *cookie  `json:"cookie"`
-	Userinfo Userinfo `json:"userinfo"`
+	Cookie   *cookie   `json:"cookie"`
+	Userinfo *Userinfo `json:"userinfo"`
 }
 
 type Token struct {
@@ -239,9 +239,31 @@ func (c *Client) newSession(ctx *gin.Context, code string) (session *sessionResp
 	return &resp, nil
 }
 
+// delSession 删除session
+func (c *Client) delSession(ctx *gin.Context, cookie string) (session *sessionResp, err error) {
+	var (
+		uri = fmt.Sprintf("%v/sso/api/v1/oauth/session/del", c.option.Addr)
+		req = map[string]interface{}{
+			"client_id": c.option.ClientID,
+			"cookie":    cookie,
+		}
+		resp sessionResp
+	)
+
+	if _, _, err = c.client.PostJSON(ctx, uri, req, &resp); err != nil {
+		return
+	}
+
+	return &resp, nil
+}
+
 type sessionOptions struct {
-	RedirectFunc func(ctx *gin.Context, uri string, err error)         // 默认：未登录则会302重定向到登录页
-	CallbackFunc func(ctx *gin.Context, userinfo *Userinfo, err error) // 默认：失败会返回403状态码
+	// 用户未登录重定向到登录页，默认未登录则会302重定向到登录页
+	RedirectFunc func(ctx *gin.Context, uri string, err error)
+	// 用户授权登录后回调，默认失败会返回403状态码
+	CallbackFunc func(ctx *gin.Context, userinfo *Userinfo, err error)
+	// 用户注销登录，默认失败会返回
+	LogoutFunc func(ctx *gin.Context, err error)
 }
 
 type SessionOption func(options *sessionOptions)
@@ -255,6 +277,12 @@ func WithRedirect(redirect func(ctx *gin.Context, uri string, err error)) Sessio
 func WithCallback(callback func(ctx *gin.Context, userinfo *Userinfo, err error)) SessionOption {
 	return func(options *sessionOptions) {
 		options.CallbackFunc = callback
+	}
+}
+
+func WithLogout(logout func(ctx *gin.Context, err error)) SessionOption {
+	return func(options *sessionOptions) {
+		options.LogoutFunc = logout
 	}
 }
 
@@ -287,7 +315,7 @@ func (c *Client) oauth(options sessionOptions) gin.HandlerFunc {
 			return
 		}
 
-		userinfo = &resp.Userinfo
+		userinfo = resp.Userinfo
 
 		if resp.Cookie != nil {
 			c.setCookie(ctx, resp.Cookie)
@@ -353,18 +381,54 @@ func (c *Client) login() gin.HandlerFunc {
 	}
 }
 
-func (c *Client) Session(router Router, loginPath, oauthPath string, options ...SessionOption) (middleware gin.HandlerFunc) {
+func (c *Client) logout(options sessionOptions) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var (
+			err    error
+			cookie string
+		)
+
+		defer func() {
+			if options.LogoutFunc != nil {
+				options.LogoutFunc(ctx, err)
+			} else {
+				if err != nil {
+					ctx.AbortWithStatus(http.StatusForbidden)
+				}
+			}
+		}()
+
+		if cookie, err = ctx.Cookie(c.cookieName()); err != nil {
+			return
+		}
+
+		session, err := c.delSession(ctx, cookie)
+		if err != nil {
+			return
+		}
+
+		if session.Cookie != nil {
+			c.setCookie(ctx, session.Cookie)
+		}
+	}
+}
+
+func (c *Client) Session(router Router, loginPath, oauthPath, logoutPath string, options ...SessionOption) (middleware gin.HandlerFunc) {
 	var opt sessionOptions
 	for _, fn := range options {
 		fn(&opt)
 	}
 
+	middleware = c.middleware(path.Join(router.BasePath(), loginPath), opt)
+
 	router.GET(loginPath, c.login())
 	router.HEAD(loginPath, c.login())
 	router.GET(oauthPath, c.oauth(opt))
 	router.POST(oauthPath, c.oauth(opt))
+	router.GET(logoutPath, middleware, c.logout(opt))
+	router.POST(logoutPath, middleware, c.logout(opt))
 
-	return c.middleware(path.Join(router.BasePath(), loginPath), opt)
+	return middleware
 }
 
 func (c *Client) SessionUserinfo(ctx context.Context) *Userinfo {
