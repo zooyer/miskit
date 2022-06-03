@@ -273,7 +273,9 @@ func (c *Client) oauth(options sessionOptions) gin.HandlerFunc {
 			if options.CallbackFunc != nil {
 				options.CallbackFunc(ctx, userinfo, err)
 			} else {
-				ctx.AbortWithStatus(http.StatusForbidden)
+				if err != nil {
+					ctx.AbortWithStatus(http.StatusForbidden)
+				}
 			}
 		}()
 
