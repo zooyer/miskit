@@ -170,7 +170,7 @@ func (c *Client) Userinfo(ctx *gin.Context, accessToken string) (userinfo *Useri
 		return
 	}
 
-	return &resp, nil
+	return c.userinfo(ctx, &resp), nil
 }
 
 func (c *Client) cookieName() string {
@@ -286,6 +286,18 @@ func WithLogout(logout func(ctx *gin.Context, err error)) SessionOption {
 	}
 }
 
+func (c *Client) userinfo(ctx *gin.Context, userinfo *Userinfo) *Userinfo {
+	if userinfo == nil {
+		return nil
+	}
+
+	if userinfo.UserAvatar != "" {
+		userinfo.UserAvatar = fmt.Sprintf("%v/%v", c.option.Addr, userinfo.UserAvatar)
+	}
+
+	return userinfo
+}
+
 func (c *Client) oauth(options sessionOptions) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var (
@@ -315,7 +327,9 @@ func (c *Client) oauth(options sessionOptions) gin.HandlerFunc {
 			return
 		}
 
-		userinfo = resp.Userinfo
+		if userinfo = resp.Userinfo; userinfo != nil {
+			userinfo = c.userinfo(ctx, userinfo)
+		}
 
 		if resp.Cookie != nil {
 			c.setCookie(ctx, resp.Cookie)
@@ -350,7 +364,7 @@ func (c *Client) middleware(loginPath string, options sessionOptions) gin.Handle
 			return
 		}
 
-		ctx.Set(c.contextKey(), session.Userinfo)
+		ctx.Set(c.contextKey(), c.userinfo(ctx, session.Userinfo))
 
 		if session.Cookie != nil {
 			c.setCookie(ctx, session.Cookie)
