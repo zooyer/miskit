@@ -528,8 +528,8 @@ github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/zenazn/goji v0.9.0/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
-github.com/zooyer/jsons v0.0.1 h1:6u1PLI8SV/f0GI7uDJR4m5CvrTlPiPAhZHvMe3MvsH4=
-github.com/zooyer/jsons v0.0.1/go.mod h1:xxbXokMCIhpeWARuciXeC/psqNlLLQ1cmizVGH73Gdk=
+github.com/zooyer/jsons v0.0.2 h1:jhz3kk9YLCPtvZBmJHXUMjGTZFhBd5yF/kHpk6eBsV0=
+github.com/zooyer/jsons v0.0.2/go.mod h1:xxbXokMCIhpeWARuciXeC/psqNlLLQ1cmizVGH73Gdk=
 go.etcd.io/etcd/api/v3 v3.5.2/go.mod h1:5GB2vv4A4AOn3yk7MftYGHkUfGtDHnEraIjym4dYz5A=
 go.etcd.io/etcd/client/pkg/v3 v3.5.2/go.mod h1:IJHfcCEKxYu1Os13ZdwCwIUTUVGYTSAM3YSwc9/Ac1g=
 go.etcd.io/etcd/client/v2 v2.305.2/go.mod h1:2D7ZejHVMIfog1221iLSYlQRzrtECw3kz4I4VAQm3qI=
