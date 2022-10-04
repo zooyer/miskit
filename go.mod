@@ -20,6 +20,7 @@ require (
 	github.com/zooyer/jsons v0.0.2
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f
+	golang.org/x/net v0.0.0-20221002022538-bcab6841153b // indirect
 	gorm.io/driver/mysql v1.3.3
 	gorm.io/driver/sqlite v1.3.2
 	gorm.io/gorm v1.23.5
