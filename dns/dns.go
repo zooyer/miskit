@@ -138,24 +138,20 @@ func HookHosts(hosts map[string][]dnsmessage.Resource) (err error) {
 		return
 	}
 
-	go func() {
-		var buf = make([]byte, 512)
-		for {
-			_, addr, err := conn.ReadFromUDP(buf)
-			if err != nil {
-				continue
-			}
-
-			var msg dnsmessage.Message
-			if err = msg.Unpack(buf); err != nil {
-				continue
-			}
-
-			go handleHook(conn, addr, msg, hosts)
+	var buf = make([]byte, 512)
+	for {
+		_, addr, err := conn.ReadFromUDP(buf)
+		if err != nil {
+			continue
 		}
-	}()
 
-	return
+		var msg dnsmessage.Message
+		if err = msg.Unpack(buf); err != nil {
+			continue
+		}
+
+		go handleHook(conn, addr, msg, hosts)
+	}
 }
 
 func HookHostsByText(hosts map[string][]string) (err error) {
@@ -192,4 +188,22 @@ func HookHostsByText(hosts map[string][]string) (err error) {
 	}
 
 	return HookHosts(resources)
+}
+
+func HookHostsByLocal(names ...string) (err error) {
+	address, err := net.InterfaceAddrs()
+	if err != nil {
+		return
+	}
+
+	var hosts = make(map[string][]string)
+	for _, addr := range address {
+		if addr, ok := addr.(*net.IPNet); ok && addr.IP.IsGlobalUnicast() {
+			for _, name := range names {
+				hosts[name] = append(hosts[name], addr.IP.String())
+			}
+		}
+	}
+
+	return HookHostsByText(hosts)
 }

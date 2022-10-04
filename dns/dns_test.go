@@ -17,7 +17,7 @@ import (
 	"golang.org/x/net/dns/dnsmessage"
 )
 
-func TestHook(t *testing.T) {
+func TestLookupIP(t *testing.T) {
 	addrs, err := net.LookupIP("vpn.zb.genkitol.com")
 	if err != nil {
 		t.Fatal(err)
@@ -61,8 +61,6 @@ func TestHookHosts(t *testing.T) {
 	if err := HookHosts(hosts); err != nil {
 		t.Fatal(err)
 	}
-
-	select {}
 }
 
 func TestHookHostsByText(t *testing.T) {
@@ -76,6 +74,10 @@ func TestHookHostsByText(t *testing.T) {
 	if err := HookHostsByText(hosts); err != nil {
 		t.Fatal(err)
 	}
+}
 
-	select {}
+func TestHookHostsByLocal(t *testing.T) {
+	if err := HookHostsByLocal("zzy", "ll"); err != nil {
+		t.Fatal(err)
+	}
 }
