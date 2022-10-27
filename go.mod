@@ -1,6 +1,6 @@
 module github.com/zooyer/miskit
 
-go 1.16
+go 1.18
 
 require (
 	github.com/brahma-adshonor/gohook v1.1.9
