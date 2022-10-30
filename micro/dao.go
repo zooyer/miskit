@@ -41,8 +41,11 @@ func (d Dao) DB(ctx context.Context) *gorm.DB {
 	return db.Scopes(d.undeleted())
 }
 
-func (d Dao) QueryDeleted(ok bool) {
-	d.deleted = true
+func (d Dao) QueryDeleted(ok bool) Dao {
+	var dao = d
+	dao.deleted = ok
+
+	return dao
 }
 
 func (d Dao) undeleted() func(db *gorm.DB) *gorm.DB {

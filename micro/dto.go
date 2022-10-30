@@ -42,7 +42,7 @@ func init() {
 	}
 }
 
-func (q Query) BySelect(db *gorm.DB) *gorm.DB {
+func (q *Query) BySelect(db *gorm.DB) *gorm.DB {
 	if len(q.Select) > 0 {
 		db = db.Select(q.Select)
 	}
@@ -54,7 +54,7 @@ func (q Query) BySelect(db *gorm.DB) *gorm.DB {
 	return db
 }
 
-func (q Query) ByLimit(db *gorm.DB) *gorm.DB {
+func (q *Query) ByLimit(db *gorm.DB) *gorm.DB {
 	if q.Page > 0 {
 		db = db.Offset((q.Page - 1) * q.Size)
 	}
@@ -62,20 +62,20 @@ func (q Query) ByLimit(db *gorm.DB) *gorm.DB {
 	return db.Limit(q.Size)
 }
 
-func (q Query) BySort(db *gorm.DB) *gorm.DB {
+func (q *Query) BySort(db *gorm.DB) *gorm.DB {
 	return db.Order(q.Sort)
 }
 
-func (q Query) ByWhere(db *gorm.DB) *gorm.DB {
+func (q *Query) ByWhere(db *gorm.DB) *gorm.DB {
 	if q.Where != "" {
 		db = db.Where(q.Where)
 	}
 	return db
 }
 
-func (q Query) ByCustom(db *gorm.DB) *gorm.DB {
+func (q *Query) ByCustom(db *gorm.DB) *gorm.DB {
 	for key, val := range q.form {
-		if omitParams[key] || len(val) == 0 {
+		if omitParams[key] || len(val) == 0 || len(val) == 1 && len(val[0]) == 0 {
 			continue
 		}
 
@@ -107,7 +107,7 @@ func (q Query) ByCustom(db *gorm.DB) *gorm.DB {
 	return db
 }
 
-func (q Query) ByQuery(db *gorm.DB) *gorm.DB {
+func (q *Query) ByQuery(db *gorm.DB) *gorm.DB {
 	db = q.BySelect(db)
 	db = q.ByWhere(db)
 	db = q.ByLimit(db)
