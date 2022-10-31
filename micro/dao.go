@@ -21,6 +21,13 @@ type Model struct {
 	DeletedBy string `json:"deleted_by"`
 }
 
+type CountModel struct {
+	CountByYear  int8 `json:"count_by_year"`  // 按年统计
+	CountByMonth int8 `json:"count_by_month"` // 按月统计
+	CountByWeek  int8 `json:"count_by_week"`  // 按周统计
+	CountByDay   int8 `json:"count_by_day"`   // 按天统计
+}
+
 type Dao struct {
 	db      func(ctx context.Context) *gorm.DB
 	model   schema.Tabler
