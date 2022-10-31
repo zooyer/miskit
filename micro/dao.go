@@ -26,6 +26,7 @@ type CountModel struct {
 	CountByMonth int16 `json:"count_by_month" sql:"index"` // 按月统计
 	CountByWeek  int16 `json:"count_by_week" sql:"index"`  // 按周统计
 	CountByDay   int16 `json:"count_by_day" sql:"index"`   // 按天统计
+	CountByHour  int16 `json:"count_by_hour" sql:"index"`  // 按时统计
 }
 
 type Dao struct {
