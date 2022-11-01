@@ -29,6 +29,8 @@ type Client struct {
 	client *zrpc.Client
 }
 
+type Pages Client
+
 type cookie struct {
 	Cookie   string `json:"cookie"`
 	MaxAge   int    `json:"max_age"`
@@ -451,4 +453,24 @@ func (c *Client) SessionUserinfo(ctx context.Context) *Userinfo {
 	}
 
 	return nil
+}
+
+func (c *Client) Pages() *Pages {
+	return (*Pages)(c)
+}
+
+func (p *Pages) Login() string {
+	return fmt.Sprintf("%v/sso/login", p.option.Addr)
+}
+
+func (p *Pages) Home() string {
+	return fmt.Sprintf("%v/sso", p.option.Addr)
+}
+
+func (p *Pages) Dashboard() string {
+	return fmt.Sprintf("%v/dashboard", p.option.Addr)
+}
+
+func (p *Pages) Profile() string {
+	return fmt.Sprintf("%v/sso/profile", p.option.Addr)
 }
