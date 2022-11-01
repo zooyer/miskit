@@ -460,11 +460,11 @@ func (c *Client) Pages() *Pages {
 }
 
 func (p *Pages) Login() string {
-	return fmt.Sprintf("%v/sso/login", p.option.Addr)
+	return fmt.Sprintf("%v/login", p.option.Addr)
 }
 
 func (p *Pages) Home() string {
-	return fmt.Sprintf("%v/sso", p.option.Addr)
+	return fmt.Sprintf("%v", p.option.Addr)
 }
 
 func (p *Pages) Dashboard() string {
@@ -472,5 +472,5 @@ func (p *Pages) Dashboard() string {
 }
 
 func (p *Pages) Profile() string {
-	return fmt.Sprintf("%v/sso/profile", p.option.Addr)
+	return fmt.Sprintf("%v/profile", p.option.Addr)
 }
