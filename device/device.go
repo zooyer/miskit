@@ -236,7 +236,7 @@ func BaseboardSN() []string {
 
 		var sn = make([]string, 0, len(boards))
 		for _, board := range boards {
-			sn = append(sn, board.SerialNumber)
+			sn = append(sn, fmt.Sprintf("%s %s", board.Manufacturer, board.SerialNumber))
 		}
 
 		return sn
@@ -264,7 +264,7 @@ func BiosSN() []string {
 
 		var sn = make([]string, len(bios))
 		for _, b := range bios {
-			sn = append(sn, b.BIOSVersion)
+			sn = append(sn, fmt.Sprintf("%s %s %v", strings.TrimSpace(b.Vendor), strings.TrimSpace(b.BIOSVersion), b.Characteristics))
 		}
 
 		return sn
@@ -292,7 +292,7 @@ func ProcessorSN() []string {
 
 		var id = make([]string, 0, len(processor))
 		for _, p := range processor {
-			id = append(id, p.SerialNumber)
+			id = append(id, fmt.Sprintf("%s %s", strings.TrimSpace(p.Version), p.ID))
 		}
 
 		return id
@@ -325,7 +325,7 @@ func SystemID() []string {
 
 		var id = make([]string, 0, len(system))
 		for _, s := range system {
-			id = append(id, s.UUID)
+			id = append(id, fmt.Sprintf("%s %s %s", s.Manufacturer, s.ProductName, s.SerialNumber))
 		}
 
 		return id
