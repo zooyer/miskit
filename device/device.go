@@ -11,8 +11,6 @@
 package device
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"net"
 	"os/exec"
@@ -20,6 +18,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/yumaojun03/dmidecode"
 	"github.com/zooyer/embed/log"
 )
 
@@ -153,7 +152,7 @@ func getBaseboardIDByWindows() string {
 	return wmicByKey("baseboard", "SerialNumber")
 }
 
-func getBaseboardIDByDarwin() string {
+func getBaseboardIDByDarwin() []string {
 	panic("implement")
 }
 
@@ -165,20 +164,21 @@ func getBiosSNByWindows() string {
 	return strings.ReplaceAll(wmicByKey("bios", "SerialNumber"), " ", "")
 }
 
-func getBiosSNByDarwin() string {
+func getBiosSNByDarwin() []string {
 	output, err := execCommand("system_profiler", "SPHardwareDataType")
 	if err != nil {
 		log.ZError("getBiosSNByDarwin execCommand error:", err.Error())
-		return ""
+		return nil
 	}
 
+	var sn []string
 	for _, line := range strings.Split(output, "\n") {
 		if strings.Contains(line, "Serial Number (system)") && strings.Contains(line, ":") {
-			return strings.TrimSpace(strings.Split(line, ":")[1])
+			sn = append(sn, strings.TrimSpace(strings.Split(line, ":")[1]))
 		}
 	}
 
-	return output
+	return sn
 }
 
 func getBiosSNByLinux() string {
@@ -190,7 +190,6 @@ func getCPUIDByWindows() []string {
 }
 
 func getCPUIDByDarwin() []string {
-	return nil
 	panic("implement")
 }
 
@@ -202,8 +201,7 @@ func getOSUUIDByWindows() string {
 	return wmicByKey("csproduct", "UUID")
 }
 
-func getOSUUIDByDarwin() string {
-	return ""
+func getOSUUIDByDarwin() []string {
 	panic("implement")
 }
 
@@ -219,41 +217,85 @@ func getOSUUIDByLinux() string {
 	return output
 }
 
-func BaseboardID() string {
+func BaseboardSN() []string {
 	switch runtime.GOOS {
-	case "windows":
-		return getBaseboardIDByWindows()
 	case "darwin":
-		return ""
 		return getBaseboardIDByDarwin()
 	case "linux":
-		return getBaseboardIDByLinux()
+		fallthrough
+	case "windows":
+		dmi, err := dmidecode.New()
+		if err != nil {
+			return nil
+		}
+
+		boards, err := dmi.BaseBoard()
+		if err != nil {
+			return nil
+		}
+
+		var sn = make([]string, 0, len(boards))
+		for _, board := range boards {
+			sn = append(sn, board.SerialNumber)
+		}
+
+		return sn
 	}
 
-	return ""
+	return nil
 }
 
-func BiosSN() string {
+func BiosSN() []string {
 	switch runtime.GOOS {
-	case "windows":
-		return getBiosSNByWindows()
 	case "darwin":
 		return getBiosSNByDarwin()
 	case "linux":
-		return getBiosSNByLinux()
+		fallthrough
+	case "windows":
+		dmi, err := dmidecode.New()
+		if err != nil {
+			return nil
+		}
+
+		bios, err := dmi.BIOS()
+		if err != nil {
+			return nil
+		}
+
+		var sn = make([]string, len(bios))
+		for _, b := range bios {
+			sn = append(sn, b.BIOSVersion)
+		}
+
+		return sn
 	}
 
-	return ""
+	return nil
 }
 
-func CPUID() []string {
+func ProcessorSN() []string {
 	switch runtime.GOOS {
-	case "windows":
-		return getCPUIDByWindows()
 	case "darwin":
 		return getCPUIDByDarwin()
 	case "linux":
-		return getCPUIDByLinux()
+		fallthrough
+	case "windows":
+		dmi, err := dmidecode.New()
+		if err != nil {
+			return nil
+		}
+
+		processor, err := dmi.Processor()
+		if err != nil {
+			return nil
+		}
+
+		var id = make([]string, 0, len(processor))
+		for _, p := range processor {
+			id = append(id, p.SerialNumber)
+		}
+
+		return id
 	}
 
 	return nil
@@ -264,27 +306,30 @@ func MAC() []string {
 	return addr
 }
 
-func OSID() string {
+func SystemID() []string {
 	switch runtime.GOOS {
-	case "windows":
-		return getOSUUIDByWindows()
 	case "darwin":
 		return getOSUUIDByDarwin()
 	case "linux":
-		return getOSUUIDByLinux()
+		fallthrough
+	case "windows":
+		dmi, err := dmidecode.New()
+		if err != nil {
+			return nil
+		}
+
+		system, err := dmi.System()
+		if err != nil {
+			return nil
+		}
+
+		var id = make([]string, 0, len(system))
+		for _, s := range system {
+			id = append(id, s.UUID)
+		}
+
+		return id
 	}
 
-	return ""
-}
-
-func MachineID() string {
-	var ids = []string{BaseboardID(), BiosSN(), strings.Join(CPUID(), "-"), strings.Join(MAC(), "-"), OSID()}
-
-	return strings.Join(ids, "|")
-}
-
-func Fingerprint() string {
-	sum := md5.Sum([]byte(MachineID()))
-
-	return hex.EncodeToString(sum[:])
+	return nil
 }
