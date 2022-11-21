@@ -28,8 +28,13 @@ func isPhysicalEthernet(index int) (is bool, err error) {
 		return
 	}
 
-	// 不包含USB网卡
+	// 只可以使用pci网卡（电视盒子不支持）
 	if !strings.Contains(link, "/devices/pci") {
+		//return
+	}
+
+	// 不包含USB网卡
+	if strings.Contains(link, "usb") {
 		return
 	}
 
