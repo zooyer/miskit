@@ -153,6 +153,7 @@ func getBaseboardIDByWindows() string {
 }
 
 func getBaseboardIDByDarwin() []string {
+	return nil
 	panic("implement")
 }
 
@@ -190,6 +191,7 @@ func getCPUIDByWindows() []string {
 }
 
 func getCPUIDByDarwin() []string {
+	return nil
 	panic("implement")
 }
 
@@ -202,6 +204,7 @@ func getOSUUIDByWindows() string {
 }
 
 func getOSUUIDByDarwin() []string {
+	return nil
 	panic("implement")
 }
 
