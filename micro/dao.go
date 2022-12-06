@@ -158,3 +158,11 @@ func NewDao(db func(ctx context.Context) *gorm.DB, model schema.Tabler) Dao {
 		model: model,
 	}
 }
+
+func (e Equal) Where() map[string]interface{} {
+	return e
+}
+
+func (u Update) Updates() map[string]interface{} {
+	return u
+}
