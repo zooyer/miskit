@@ -10,23 +10,23 @@ import (
 
 type Model struct {
 	ID        uint   `json:"id" gorm:"primary_key"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
-	DeletedAt int64  `json:"deleted_at" sql:"index"`
-	CreatedID int64  `json:"created_id"`
-	UpdatedID int64  `json:"updated_id"`
-	DeletedID int64  `json:"deleted_id"`
-	CreatedBy string `json:"created_by"`
-	UpdatedBy string `json:"updated_by"`
-	DeletedBy string `json:"deleted_by"`
+	CreatedAt int64  `json:"created_at" gorm:"index"`
+	UpdatedAt int64  `json:"updated_at" gorm:"index"`
+	DeletedAt int64  `json:"deleted_at" gorm:"index"`
+	CreatedID int64  `json:"created_id" gorm:"index"`
+	UpdatedID int64  `json:"updated_id" gorm:"index"`
+	DeletedID int64  `json:"deleted_id" gorm:"index"`
+	CreatedBy string `json:"created_by" gorm:"index"`
+	UpdatedBy string `json:"updated_by" gorm:"index"`
+	DeletedBy string `json:"deleted_by" gorm:"index"`
 }
 
 type CountModel struct {
-	CountByYear  int16 `json:"count_by_year" sql:"index"`  // 按年统计
-	CountByMonth int16 `json:"count_by_month" sql:"index"` // 按月统计
-	CountByWeek  int16 `json:"count_by_week" sql:"index"`  // 按周统计
-	CountByDay   int16 `json:"count_by_day" sql:"index"`   // 按天统计
-	CountByHour  int16 `json:"count_by_hour" sql:"index"`  // 按时统计
+	CountByYear  int16 `json:"count_by_year" gorm:"index"`  // 按年统计
+	CountByMonth int16 `json:"count_by_month" gorm:"index"` // 按月统计
+	CountByWeek  int16 `json:"count_by_week" gorm:"index"`  // 按周统计
+	CountByDay   int16 `json:"count_by_day" gorm:"index"`   // 按天统计
+	CountByHour  int16 `json:"count_by_hour" gorm:"index"`  // 按时统计
 }
 
 type Dao struct {
