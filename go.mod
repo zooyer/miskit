@@ -26,7 +26,7 @@ require (
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10
 	gorm.io/driver/mysql v1.3.3
 	gorm.io/driver/sqlite v1.3.2
-	gorm.io/gorm v1.23.5
+	gorm.io/gorm v1.25.5
 )
 
 require (
