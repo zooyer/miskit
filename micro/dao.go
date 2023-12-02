@@ -13,9 +13,9 @@ type Model struct {
 	CreatedAt int64  `json:"created_at" gorm:"index"`
 	UpdatedAt int64  `json:"updated_at" gorm:"index"`
 	DeletedAt int64  `json:"deleted_at" gorm:"index"`
-	CreatedID int64  `json:"created_id" gorm:"index"`
-	UpdatedID int64  `json:"updated_id" gorm:"index"`
-	DeletedID int64  `json:"deleted_id" gorm:"index"`
+	CreatedID string `json:"created_id" gorm:"index"`
+	UpdatedID string `json:"updated_id" gorm:"index"`
+	DeletedID string `json:"deleted_id" gorm:"index"`
 	CreatedBy string `json:"created_by" gorm:"index"`
 	UpdatedBy string `json:"updated_by" gorm:"index"`
 	DeletedBy string `json:"deleted_by" gorm:"index"`
