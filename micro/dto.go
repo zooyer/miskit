@@ -111,21 +111,21 @@ func (q *Query) ByCustom(db *gorm.DB) *gorm.DB {
 
 		switch op {
 		case '^': // 前缀匹配
-			query = fmt.Sprintf("%s LIKE ?", key)
+			query += fmt.Sprintf("%s LIKE ?", key)
 			args = append(args, fmt.Sprintf("%s%%", val[0]))
 		case '$': // 后缀匹配
-			query = fmt.Sprintf("%s LIKE ?", key)
+			query += fmt.Sprintf("%s LIKE ?", key)
 			args = append(args, fmt.Sprintf("%%%s", val[0]))
 		case '*': // 模糊匹配
-			query = fmt.Sprintf("%s LIKE ?", key)
+			query += fmt.Sprintf("%s LIKE ?", key)
 			args = append(args, fmt.Sprintf("%%%s%%", val[0]))
 		case '=': // 等值匹配
-			query = fmt.Sprintf("`%s` = ?", key)
+			query += fmt.Sprintf("`%s` = ?", key)
 			args = append(args, val[0])
 		case '\\':
 			fallthrough
 		default: // 数组匹配 (没有操作符或是数组全部是等值匹配)
-			query = fmt.Sprintf("%s IN (?)", key)
+			query += fmt.Sprintf("%s IN (?)", key)
 			args = append(args, val)
 		}
 	}
