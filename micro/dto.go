@@ -101,11 +101,11 @@ func (q *Query) ByCustom(db *gorm.DB) *gorm.DB {
 		} else {
 			switch q.Cond {
 			case "or":
-				query = "OR " + query
+				query += " OR "
 			case "and":
-				query = "AND " + query
+				query += " AND "
 			case "not":
-				query = "NOT " + query
+				query += " NOT "
 			}
 		}
 
