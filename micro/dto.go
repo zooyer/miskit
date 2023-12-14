@@ -75,6 +75,12 @@ func (q *Query) ByWhere(db *gorm.DB) *gorm.DB {
 }
 
 func (q *Query) ByCustom(db *gorm.DB) *gorm.DB {
+	var (
+		query   string
+		args    []interface{}
+		isFirst = true
+	)
+
 	for key, val := range q.form {
 		if omitParams[key] || len(val) == 0 || len(val) == 1 && len(val[0]) == 0 {
 			continue
@@ -90,37 +96,41 @@ func (q *Query) ByCustom(db *gorm.DB) *gorm.DB {
 		}
 
 		// 查询条件
-		var cond = db.Where
-		switch q.Cond {
-		case "or":
-			cond = db.Or
-		case "not":
-			cond = db.Not
-		case "and":
-			cond = db.Where
-		case "where":
-			cond = db.Where
-		case "select":
-			cond = db.Select
+		if isFirst {
+			isFirst = false
+		} else {
+			switch q.Cond {
+			case "or":
+				query = "OR " + query
+			case "and":
+				query = "AND " + query
+			case "not":
+				query = "NOT " + query
+			}
 		}
 
 		switch op {
 		case '^': // 前缀匹配
-			db = cond(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%s%%", val[0]))
+			query = fmt.Sprintf("%s LIKE ?", key)
+			args = append(args, fmt.Sprintf("%s%%", val[0]))
 		case '$': // 后缀匹配
-			db = cond(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%%%s", val[0]))
+			query = fmt.Sprintf("%s LIKE ?", key)
+			args = append(args, fmt.Sprintf("%%%s", val[0]))
 		case '*': // 模糊匹配
-			db = cond(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%%%s%%", val[0]))
+			query = fmt.Sprintf("%s LIKE ?", key)
+			args = append(args, fmt.Sprintf("%%%s%%", val[0]))
 		case '=': // 等值匹配
-			db = cond(fmt.Sprintf("`%s` = ?", key), val[0])
+			query = fmt.Sprintf("`%s` = ?", key)
+			args = append(args, val[0])
 		case '\\':
 			fallthrough
 		default: // 数组匹配 (没有操作符或是数组全部是等值匹配)
-			db = cond(fmt.Sprintf("`%s` IN (?)", key), val)
+			query = fmt.Sprintf("%s IN (?)", key)
+			args = append(args, val)
 		}
 	}
 
-	return db
+	return db.Where(query, args...)
 }
 
 func (q *Query) ByQuery(db *gorm.DB) *gorm.DB {
