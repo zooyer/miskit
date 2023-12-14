@@ -11,14 +11,15 @@ import (
 )
 
 type Query struct {
-	form url.Values
+	form url.Values // 自定义字段
 
-	Page   int      `form:"page" json:"page,omitempty"`
-	Size   int      `form:"size" json:"size,omitempty"`
-	Sort   string   `form:"sort" json:"sort,omitempty"`
-	Omit   []string `form:"omit" json:"omit,omitempty"`
-	Select []string `form:"select" json:"select,omitempty"`
-	Where  string   `form:"where" json:"where,omitempty"`
+	Page   int      `form:"page" json:"page,omitempty"`     // 当前页
+	Size   int      `form:"size" json:"size,omitempty"`     // 页大小
+	Sort   string   `form:"sort" json:"sort,omitempty"`     // 排序
+	Cond   string   `form:"cond" json:"cond,omitempty"`     // 条件符号：and、or，用于自定义字段查询
+	Omit   []string `form:"omit" json:"omit,omitempty"`     // 忽略字段
+	Select []string `form:"select" json:"select,omitempty"` // 选择字段
+	Where  string   `form:"where" json:"where,omitempty"`   // 自定义条件SQL
 }
 
 type Result struct {
@@ -88,19 +89,34 @@ func (q *Query) ByCustom(db *gorm.DB) *gorm.DB {
 			}
 		}
 
+		// 查询条件
+		var cond = db.Where
+		switch q.Cond {
+		case "or":
+			cond = db.Or
+		case "not":
+			cond = db.Not
+		case "and":
+			cond = db.Where
+		case "where":
+			cond = db.Where
+		case "select":
+			cond = db.Select
+		}
+
 		switch op {
 		case '^': // 前缀匹配
-			db = db.Where(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%s%%", val[0]))
+			db = cond(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%s%%", val[0]))
 		case '$': // 后缀匹配
-			db = db.Where(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%%%s", val[0]))
+			db = cond(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%%%s", val[0]))
 		case '*': // 模糊匹配
-			db = db.Where(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%%%s%%", val[0]))
+			db = cond(fmt.Sprintf("`%s` LIKE ?", key), fmt.Sprintf("%%%s%%", val[0]))
 		case '=': // 等值匹配
-			db = db.Where(fmt.Sprintf("`%s` = ?", key), val[0])
+			db = cond(fmt.Sprintf("`%s` = ?", key), val[0])
 		case '\\':
 			fallthrough
 		default: // 数组匹配 (没有操作符或是数组全部是等值匹配)
-			db = db.Where(fmt.Sprintf("`%s` IN (?)", key), val)
+			db = cond(fmt.Sprintf("`%s` IN (?)", key), val)
 		}
 	}
 
@@ -108,13 +124,7 @@ func (q *Query) ByCustom(db *gorm.DB) *gorm.DB {
 }
 
 func (q *Query) ByQuery(db *gorm.DB) *gorm.DB {
-	db = q.BySelect(db)
-	db = q.ByWhere(db)
-	db = q.ByLimit(db)
-	db = q.BySort(db)
-	db = q.ByCustom(db)
-
-	return db
+	return db.Scopes(q.BySelect, q.ByWhere, q.ByCustom, q.ByLimit, q.BySort)
 }
 
 func (q *Query) Valid(ctx *gin.Context) (err error) {
