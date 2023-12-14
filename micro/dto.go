@@ -106,6 +106,8 @@ func (q *Query) ByCustom(db *gorm.DB) *gorm.DB {
 				query += " AND "
 			case "not":
 				query += " NOT "
+			default:
+				query += " AND "
 			}
 		}
 
