@@ -225,8 +225,9 @@ func BaseboardSN() []string {
 	case "darwin":
 		return getBaseboardIDByDarwin()
 	case "linux":
-		fallthrough
+		return []string{getBaseboardIDByLinux()}
 	case "windows":
+		return []string{getBaseboardIDByWindows()}
 		dmi, err := dmidecode.New()
 		if err != nil {
 			return nil
@@ -253,8 +254,9 @@ func BiosSN() []string {
 	case "darwin":
 		return getBiosSNByDarwin()
 	case "linux":
-		fallthrough
+		return []string{getBiosSNByLinux()}
 	case "windows":
+		return []string{getBiosSNByWindows()}
 		dmi, err := dmidecode.New()
 		if err != nil {
 			return nil
@@ -281,8 +283,9 @@ func ProcessorSN() []string {
 	case "darwin":
 		return getCPUIDByDarwin()
 	case "linux":
-		fallthrough
+		return getCPUIDByLinux()
 	case "windows":
+		return getCPUIDByWindows()
 		dmi, err := dmidecode.New()
 		if err != nil {
 			return nil
@@ -314,8 +317,9 @@ func SystemID() []string {
 	case "darwin":
 		return getOSUUIDByDarwin()
 	case "linux":
-		fallthrough
+		return []string{getOSUUIDByLinux()}
 	case "windows":
+		return []string{getOSUUIDByWindows()}
 		dmi, err := dmidecode.New()
 		if err != nil {
 			return nil
