@@ -76,8 +76,17 @@ func TestHookHostsByText(t *testing.T) {
 	}
 }
 
+// 验证方式：nslookup zzy 127.0.0.1
+// 验证方式：nslookup ll 127.0.0.1
 func TestHookHostsByLocal(t *testing.T) {
 	if err := HookHostsByLocal("zzy", "ll"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// 验证方式：nslookup asdfjdsfdksfdsjlasfjds 127.0.0.1
+func TestHookAll(t *testing.T) {
+	if err := HookAll(); err != nil {
 		t.Fatal(err)
 	}
 }

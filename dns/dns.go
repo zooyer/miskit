@@ -40,7 +40,7 @@ func handleHook(conn *net.UDPConn, addr *net.UDPAddr, msg dnsmessage.Message, ho
 		var hit bool
 
 		name := strings.TrimRight(question.Name.String(), ".")
-		for _, host := range hosts[name] {
+		for _, host := range append(hosts["*"], hosts[name]...) {
 			var (
 				ok  bool
 				res dnsmessage.ResourceBody
@@ -206,4 +206,8 @@ func HookHostsByLocal(names ...string) (err error) {
 	}
 
 	return HookHostsByText(hosts)
+}
+
+func HookAll() (err error) {
+	return HookHostsByLocal("*")
 }
