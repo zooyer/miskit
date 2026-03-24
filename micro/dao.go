@@ -3,13 +3,17 @@ package micro
 import (
 	"context"
 	"errors"
+	"time"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
-	"time"
 )
 
-type Model struct {
-	ID        uint   `json:"id" gorm:"primary_key"`
+type ModelBase struct {
+	ID uint `json:"id" gorm:"primary_key"`
+}
+
+type ModelExtra struct {
 	CreatedAt int64  `json:"created_at" gorm:"index"`
 	UpdatedAt int64  `json:"updated_at" gorm:"index"`
 	DeletedAt int64  `json:"deleted_at" gorm:"index"`
@@ -19,6 +23,10 @@ type Model struct {
 	CreatedBy string `json:"created_by" gorm:"index"`
 	UpdatedBy string `json:"updated_by" gorm:"index"`
 	DeletedBy string `json:"deleted_by" gorm:"index"`
+}
+type Model struct {
+	ModelBase
+	ModelExtra
 }
 
 type CountModel struct {
