@@ -47,6 +47,10 @@ type Equal map[string]interface{}
 
 type Update map[string]interface{}
 
+func (m *ModelExtra) SetModelExtra(extra ModelExtra) {
+	*m = extra
+}
+
 func (d Dao) DB(ctx context.Context) *gorm.DB {
 	var db = d.db(ctx).Model(d.model)
 

@@ -211,3 +211,6 @@ func HookHostsByLocal(names ...string) (err error) {
 func HookAll() (err error) {
 	return HookHostsByLocal("*")
 }
+
+// TODO 修改Hook，这里就是dns服务器，不算Hook
+// TODO 全部迁移到golib中
