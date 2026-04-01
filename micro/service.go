@@ -46,6 +46,12 @@ type Service[User Adminer] struct {
 	Session Sessioner[User]
 }
 
+func NewService(s Sessioner[Adminer]) Service[Adminer] {
+	return Service[Adminer]{
+		Session: s,
+	}
+}
+
 func (s *Service[User]) Create(ctx context.Context, create Creator) (err error) {
 	user, err := s.Session.GetUser(ctx)
 	if err != nil {
