@@ -46,8 +46,8 @@ type Service[User Adminer] struct {
 	Session Sessioner[User]
 }
 
-func NewService(s Sessioner[Adminer]) Service[Adminer] {
-	return Service[Adminer]{
+func NewService[User Adminer](s Sessioner[User]) Service[User] {
+	return Service[User]{
 		Session: s,
 	}
 }
