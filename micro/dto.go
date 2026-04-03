@@ -29,6 +29,13 @@ type Result struct {
 	Data  interface{} `json:"data"`
 }
 
+type Result2[Model Modeler] struct {
+	Query
+	Count int     `json:"count"`
+	Total int64   `json:"total"`
+	Data  []Model `json:"data"`
+}
+
 var omitParams = make(map[string]bool)
 
 func init() {
