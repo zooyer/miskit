@@ -121,6 +121,7 @@ func (s *Service[User, Model, Pointer]) Update(ctx context.Context, update Updat
 	var model Model
 
 	if err = update.Dao.DB(ctx).Transaction(func(tx *gorm.DB) error {
+		return tx.Where(update.Equal.Where()).Updates(update.Update).First(&model).Error
 		return tx.Scopes(update.Dao.equal(update.Equal)).Updates(update.Update).First(&model).Error
 	}); err != nil {
 		return nil, errors.New(update.Errno, err)
