@@ -43,9 +43,9 @@ type Dao struct {
 	deleted bool
 }
 
-type Equal map[string]interface{}
+type Equal = map[string]any
 
-type Update map[string]interface{}
+type Update = map[string]any
 
 func (m *ModelExtra) SetModelExtra(extra ModelExtra) {
 	*m = extra
@@ -169,12 +169,4 @@ func NewDao(db func(ctx context.Context) *gorm.DB, model schema.Tabler) Dao {
 		db:    db,
 		model: model,
 	}
-}
-
-func (e Equal) Where() map[string]interface{} {
-	return e
-}
-
-func (u Update) Updates() map[string]interface{} {
-	return u
 }
