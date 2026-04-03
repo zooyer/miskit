@@ -129,7 +129,7 @@ func (s *Service[User, Model, Pointer]) Update(ctx context.Context, update Updat
 	return &model, nil
 }
 
-func (s *Service[User, Model, Pointer]) Delete(ctx context.Context, delete Deleter) (err error) {
+func (s *Service[User, Model, Pointer]) Delete(ctx context.Context, delete Deleter) (m *Model, err error) {
 	user, err := s.Session.GetUser(ctx)
 	if err != nil {
 		return
@@ -137,9 +137,26 @@ func (s *Service[User, Model, Pointer]) Delete(ctx context.Context, delete Delet
 
 	var update = user.DeleteModel(time.Now())
 
-	if err = delete.Dao.Delete(ctx, delete.Equal, update); err != nil {
-		return errors.New(delete.Errno, err)
+	if v := update["updated_id"]; v != nil {
+		update["deleted_id"] = v
+	}
+	if v := update["updated_by"]; v != nil {
+		update["deleted_by"] = v
+	}
+	if v := update["updated_at"]; v != nil {
+		update["deleted_at"] = v
+	}
+	if update["deleted_at"] == nil {
+		update["deleted_at"] = time.Now().Unix()
 	}
 
-	return
+	var model Model
+
+	if err = delete.Dao.DB(ctx).Transaction(func(tx *gorm.DB) error {
+		return tx.Scopes(delete.Dao.equal(delete.Equal)).Updates(update).First(&model).Error
+	}); err != nil {
+		return nil, errors.New(delete.Errno, err)
+	}
+
+	return &model, nil
 }
