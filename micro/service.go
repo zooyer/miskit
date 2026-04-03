@@ -5,21 +5,23 @@ import (
 	"time"
 
 	"github.com/zooyer/miskit/errors"
+	"gorm.io/gorm"
 )
 
-type Modeler interface {
-	SetModelExtra(extra ModelExtra)
-}
-
-type Adminer interface {
+type Userinfo interface {
 	CreateModel(now time.Time) ModelExtra
 	UpdateModel(model Model, now time.Time) Model
 	DeleteModel(now time.Time) Update
 	Update(update Update, now time.Time) Update
 }
 
-type Sessioner[User Adminer] interface {
+type Session[User Userinfo] interface {
 	GetUser(ctx context.Context) (user User, err error)
+}
+
+type ModelPointer[T any] interface {
+	*T
+	SetModelExtra(extra ModelExtra)
 }
 
 type Getter struct {
@@ -34,10 +36,11 @@ type Lister struct {
 	Query Query
 }
 
-type Creator struct {
+type Creator[Model any, Pointer ModelPointer[Model]] struct {
 	Dao   Dao
 	Errno int
 	Equal Equal
+	Model Model
 }
 
 type Updater struct {
@@ -53,17 +56,17 @@ type Deleter struct {
 	Equal Equal
 }
 
-type Service[User Adminer, model Modeler] struct {
-	Session Sessioner[User]
+type Service[User Userinfo, Model any, Pointer ModelPointer[Model]] struct {
+	Session Session[User]
 }
 
-func NewService[User Adminer, Model Modeler](s Sessioner[User]) Service[User, Model] {
-	return Service[User, Model]{
+func NewService[User Userinfo, Model any, Pointer ModelPointer[Model]](s Session[User]) Service[User, Model, Pointer] {
+	return Service[User, Model, Pointer]{
 		Session: s,
 	}
 }
 
-func (s *Service[User, Model]) Get(ctx context.Context, get Getter) (m *Model, err error) {
+func (s *Service[User, Model, Pointer]) Get(ctx context.Context, get Getter) (m *Model, err error) {
 	var model Model
 
 	if err = get.Dao.First(ctx, get.Equal, &model); err != nil {
@@ -73,8 +76,8 @@ func (s *Service[User, Model]) Get(ctx context.Context, get Getter) (m *Model, e
 	return &model, nil
 }
 
-func (s *Service[User, Model]) List(ctx context.Context, list Lister) (result *Result2[Model], err error) {
-	var r = Result2[Model]{
+func (s *Service[User, Model, Pointer]) List(ctx context.Context, list Lister) (result *Result[Model, Pointer], err error) {
+	var r = Result[Model, Pointer]{
 		Query: list.Query,
 		Count: 0,
 		Total: 0,
@@ -90,24 +93,24 @@ func (s *Service[User, Model]) List(ctx context.Context, list Lister) (result *R
 	return &r, nil
 }
 
-func (s *Service[User, Model]) Create(ctx context.Context, create Creator) (m *Model, err error) {
+func (s *Service[User, Model, Pointer]) Create(ctx context.Context, create Creator[Model, Pointer]) (m *Model, err error) {
 	user, err := s.Session.GetUser(ctx)
 	if err != nil {
 		return
 	}
 
-	var model Model
+	var model = Pointer(&create.Model)
 
 	model.SetModelExtra(user.CreateModel(time.Now()))
 
-	if err = create.Dao.Create(ctx, create.Equal, &model); err != nil {
+	if err = create.Dao.Create(ctx, create.Equal, model); err != nil {
 		return nil, errors.New(create.Errno, err)
 	}
 
-	return &model, nil
+	return model, nil
 }
 
-func (s *Service[User, Model]) Update(ctx context.Context, update Updater) (err error) {
+func (s *Service[User, Model, Pointer]) Update(ctx context.Context, update Updater) (m *Model, err error) {
 	user, err := s.Session.GetUser(ctx)
 	if err != nil {
 		return
@@ -115,14 +118,18 @@ func (s *Service[User, Model]) Update(ctx context.Context, update Updater) (err 
 
 	user.Update(update.Update, time.Now())
 
-	if err = update.Dao.Update(ctx, update.Equal, update.Update); err != nil {
-		return errors.New(update.Errno, err)
+	var model Model
+
+	if err = update.Dao.DB(ctx).Transaction(func(tx *gorm.DB) error {
+		return tx.Scopes(update.Dao.equal(update.Equal)).Updates(update.Update).First(&model).Error
+	}); err != nil {
+		return nil, errors.New(update.Errno, err)
 	}
 
-	return
+	return &model, nil
 }
 
-func (s *Service[User, Model]) Delete(ctx context.Context, delete Deleter) (err error) {
+func (s *Service[User, Model, Pointer]) Delete(ctx context.Context, delete Deleter) (err error) {
 	user, err := s.Session.GetUser(ctx)
 	if err != nil {
 		return

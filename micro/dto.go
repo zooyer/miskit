@@ -22,14 +22,7 @@ type Query struct {
 	Where  string   `form:"where" json:"where,omitempty"`   // 自定义条件SQL
 }
 
-type Result struct {
-	Query
-	Count int         `json:"count"`
-	Total int64       `json:"total"`
-	Data  interface{} `json:"data"`
-}
-
-type Result2[Model Modeler] struct {
+type Result[Model any, Pointer ModelPointer[Model]] struct {
 	Query
 	Count int     `json:"count"`
 	Total int64   `json:"total"`
